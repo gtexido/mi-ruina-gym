@@ -365,12 +365,13 @@ async function loadSheet() {
     const sheets = await fetchJsonp(APPS_SCRIPT_URL);
 
     sheets.forEach(sh => {
-      const parsed = parseRows(sh.rows);
-      if (parsed && parsed.days.some(d => d.sections.some(s => s.exercises.length > 0))) {
-        allWeeks[sh.name] = parsed;
-        weekNames.push(sh.name);
-      }
-    });
+  const parsed = parseRows(sh.rows);
+
+  if (parsed) {
+    allWeeks[sh.name] = parsed;
+    weekNames.push(sh.name);
+  }
+});
 
     if (weekNames.length === 0) {
       throw new Error('No se encontraron rutinas en las solapas del Sheet.');
