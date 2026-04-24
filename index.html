@@ -332,74 +332,72 @@ function parseCSV(csv) {
   return rows;
 }
 
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxIHQtRrIJHBOb3GqJQdfCSExeh_fpg4nkwilz5D39XOV45fjROLSKT6EzT8KpZigss/exec';
+
 async function loadSheet() {
   const rawUrl = document.getElementById('sheetUrl').value.trim();
   const sid = getSheetId(rawUrl);
+
   setBtnLoading(true);
   setSyncMsg('Conectando con Google Sheets…', 'info');
   showLoading('Cargando datos…');
 
   try {
-    allWeeks = {}; weekNames = [];
+    allWeeks = {};
+    weekNames = [];
 
-    // Strategy 1: named tabs "Semana 1" … "Semana 10"
-    for (let i = 1; i <= 10; i++) {
-      const name = `Semana ${i}`;
-      try {
-        const csv = await fetchSheetCSV(sid, name);
-        const parsed = parseRows(parseCSV(csv));
-        if (parsed && parsed.days.some(d => d.sections.some(s => s.exercises.length > 0))) {
-          allWeeks[name] = parsed; weekNames.push(name);
-        } else break;
-      } catch(e) { break; }
+    // Lee TODAS las solapas desde Apps Script, sin importar el nombre.
+    const res = await fetch(`${APPS_SCRIPT_URL}?sid=${encodeURIComponent(sid)}&t=${Date.now()}`, {
+      cache: 'no-store'
+    });
+
+    if (!res.ok) throw new Error(`Apps Script HTTP ${res.status}`);
+
+    const sheets = await res.json();
+
+    if (!Array.isArray(sheets) || sheets.length === 0) {
+      throw new Error('Apps Script no devolvió solapas.');
     }
 
-    // Strategy 2: default tab (no name)
-    if (weekNames.length === 0) {
-      try {
-        const csv = await fetchSheetCSV(sid, null);
-        const parsed = parseRows(parseCSV(csv));
-        if (parsed && parsed.days.some(d => d.sections.some(s => s.exercises.length > 0))) {
-          allWeeks['Semana 1'] = parsed; weekNames.push('Semana 1');
-        }
-      } catch(e) {}
-    }
+    sheets.forEach(sh => {
+      if (!sh || !sh.name || !Array.isArray(sh.rows)) return;
 
-    // Strategy 3: gid=0,1,2...
-    if (weekNames.length === 0) {
-      for (let gid = 0; gid <= 9; gid++) {
-        try {
-          const url = `https://docs.google.com/spreadsheets/d/${sid}/gviz/tq?tqx=out:csv&gid=${gid}`;
-          const res = await fetch(url, { cache: 'no-store' });
-          if (!res.ok) break;
-          const text = await res.text();
-          if (!text || text.trim().startsWith('<')) break;
-          const parsed = parseRows(parseCSV(text));
-          if (parsed && parsed.days.some(d => d.sections.some(s => s.exercises.length > 0))) {
-            const name = `Semana ${gid+1}`;
-            allWeeks[name] = parsed; weekNames.push(name);
-          }
-        } catch(e) { break; }
+      const parsed = parseRows(sh.rows);
+
+      if (parsed && parsed.days.some(d => d.sections.some(s => s.exercises.length > 0))) {
+        allWeeks[sh.name] = parsed;
+        weekNames.push(sh.name);
       }
-    }
+    });
 
-    if (weekNames.length === 0) throw new Error(
-      'No se encontraron rutinas. Verificá que las hojas del Sheet se llamen "Semana 1", "Semana 2", etc.'
-    );
+    if (weekNames.length === 0) {
+      throw new Error('No se encontraron rutinas en las solapas del Google Sheets.');
+    }
 
     localStorage.setItem('gt_sheetId', sid);
     localStorage.setItem('gt_sheetUrl', rawUrl);
-    activeWeek = weekNames.length - 1; activeDay = 0; openVideos = {};
-    renderWeekTabs(); renderDayTabs(); renderAll(); updateWeekBadge();
-    setSyncMsg(`✓ ${weekNames.length} semana(s) cargadas`, 'ok');
-    showToast(`✓ ${weekNames.length} semana(s) cargadas`);
+
+    activeWeek = weekNames.length - 1;
+    activeDay = 0;
+    openVideos = {};
+
+    renderWeekTabs();
+    renderDayTabs();
+    renderAll();
+    updateWeekBadge();
+
+    setSyncMsg(`✓ ${weekNames.length} solapa(s) cargadas`, 'ok');
+    showToast(`✓ ${weekNames.length} solapa(s) cargadas`);
 
   } catch(e) {
     setSyncMsg('⚠ ' + e.message, 'err');
     showToast('Error: ' + e.message, true);
+
     if (weekNames.length === 0) loadBuiltIn();
   }
-  setBtnLoading(false); hideLoading();
+
+  setBtnLoading(false);
+  hideLoading();
 }
 
 // ══════════════════════════════════════════
