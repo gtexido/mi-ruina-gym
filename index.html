@@ -334,9 +334,25 @@ function parseCSV(csv) {
 
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxIHQtRrIJHBOb3GqJQdfCSExeh_fpg4nkwilz5D39XOV45fjROLSKT6EzT8KpZigss/exec';
 
+function fetchJsonp(url) {
+  return new Promise((resolve, reject) => {
+    const callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
+
+    window[callbackName] = function(data) {
+      delete window[callbackName];
+      document.body.removeChild(script);
+      resolve(data);
+    };
+
+    const script = document.createElement('script');
+    script.src = url + '?callback=' + callbackName;
+    script.onerror = () => reject(new Error('No se pudo conectar con Apps Script'));
+    document.body.appendChild(script);
+  });
+}
+
 async function loadSheet() {
-  const rawUrl = document.getElementById('sheetUrl').value.trim();
-  const sid = getSheetId(rawUrl);
+  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxIHQtRrIJHBOb3GqJQdfCSExeh_fpg4nkwilz5D39XOV45fjROLSKT6EzT8KpZigss/exec";
 
   setBtnLoading(true);
   setSyncMsg('Conectando con Google Sheets…', 'info');
@@ -346,24 +362,10 @@ async function loadSheet() {
     allWeeks = {};
     weekNames = [];
 
-    // Lee TODAS las solapas desde Apps Script, sin importar el nombre.
-    const res = await fetch(`${APPS_SCRIPT_URL}?sid=${encodeURIComponent(sid)}&t=${Date.now()}`, {
-      cache: 'no-store'
-    });
-
-    if (!res.ok) throw new Error(`Apps Script HTTP ${res.status}`);
-
-    const sheets = await res.json();
-
-    if (!Array.isArray(sheets) || sheets.length === 0) {
-      throw new Error('Apps Script no devolvió solapas.');
-    }
+    const sheets = await fetchJsonp(APPS_SCRIPT_URL);
 
     sheets.forEach(sh => {
-      if (!sh || !sh.name || !Array.isArray(sh.rows)) return;
-
       const parsed = parseRows(sh.rows);
-
       if (parsed && parsed.days.some(d => d.sections.some(s => s.exercises.length > 0))) {
         allWeeks[sh.name] = parsed;
         weekNames.push(sh.name);
@@ -371,13 +373,10 @@ async function loadSheet() {
     });
 
     if (weekNames.length === 0) {
-      throw new Error('No se encontraron rutinas en las solapas del Google Sheets.');
+      throw new Error('No se encontraron rutinas en las solapas del Sheet.');
     }
 
-    localStorage.setItem('gt_sheetId', sid);
-    localStorage.setItem('gt_sheetUrl', rawUrl);
-
-    activeWeek = weekNames.length - 1;
+    activeWeek = 0;
     activeDay = 0;
     openVideos = {};
 
@@ -389,10 +388,9 @@ async function loadSheet() {
     setSyncMsg(`✓ ${weekNames.length} solapa(s) cargadas`, 'ok');
     showToast(`✓ ${weekNames.length} solapa(s) cargadas`);
 
-  } catch(e) {
+  } catch (e) {
     setSyncMsg('⚠ ' + e.message, 'err');
     showToast('Error: ' + e.message, true);
-
     if (weekNames.length === 0) loadBuiltIn();
   }
 
