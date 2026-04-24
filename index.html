@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Mi Rutina">
+<meta name="theme-color" content="#f5a623">
+<title>Mi Rutina — Gustavo</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0d0f14; --surface: #161a22; --card: #1e2330;
+  --accent: #f5a623; --accent2: #e8623a; --green: #2ecc71;
+  --text: #e8ecf4; --muted: #6b7590; --border: #2a3045;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body {
+  font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text);
+  min-height: 100vh; padding-bottom: 40px;
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* HEADER */
+.header {
+  background: linear-gradient(160deg,#131824,#0d0f14);
+  padding: 22px 20px 14px; text-align: center; border-bottom: 1px solid var(--border);
+}
+.header-sub { font-size: 10px; letter-spacing: 4px; text-transform: uppercase; color: var(--accent); margin-bottom: 3px; }
+.header h1 {
+  font-family: 'Bebas Neue', sans-serif; font-size: 40px; letter-spacing: 2px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.week-badge {
+  display: inline-block; background: var(--card); border: 1px solid var(--border);
+  border-radius: 20px; padding: 3px 12px; font-size: 11px; color: var(--muted); margin-top: 5px;
+}
+
+/* CONFIG / SYNC */
+.config-section { background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 14px; }
+.config-row { display: flex; gap: 8px; align-items: center; }
+.config-input {
+  flex: 1; background: var(--card); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 10px; font-size: 11px;
+  color: var(--text); font-family: 'DM Sans', sans-serif; outline: none; min-width: 0;
+}
+.config-input:focus { border-color: var(--accent); }
+.config-input::placeholder { color: var(--muted); }
+.btn-load {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  color: #000; border: none; border-radius: 8px; padding: 8px 14px;
+  font-weight: 700; font-size: 12px; cursor: pointer; white-space: nowrap;
+  font-family: 'DM Sans', sans-serif; display: flex; align-items: center; gap: 5px;
+}
+.btn-load:disabled { opacity: .4; cursor: not-allowed; }
+.sync-msg { font-size: 11px; text-align: center; padding: 5px 0 2px; min-height: 20px; }
+.sync-msg.ok { color: var(--green); }
+.sync-msg.err { color: #e74c3c; }
+.sync-msg.info { color: var(--muted); }
+
+/* SAVE BAR */
+.save-bar {
+  display: none; background: #172217; border: 1px solid #2ecc7155;
+  border-radius: 10px; margin: 6px 0 2px; padding: 9px 12px;
+  align-items: center; justify-content: space-between; gap: 10px;
+}
+.save-bar.visible { display: flex; }
+.save-bar-text { font-size: 11px; color: var(--green); }
+.btn-save {
+  background: var(--green); color: #000; border: none; border-radius: 8px;
+  padding: 6px 12px; font-weight: 700; font-size: 11px; cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+}
+.btn-save:disabled { opacity: .5; }
+
+/* WEEK TABS */
+.week-tabs-wrap {
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  padding: 8px 14px; overflow-x: auto; display: flex; gap: 6px;
+  scrollbar-width: none;
+}
+.week-tabs-wrap::-webkit-scrollbar { display: none; }
+.wtab {
+  flex-shrink: 0; padding: 6px 14px; border-radius: 20px;
+  border: 1px solid var(--border); background: var(--card);
+  color: var(--muted); font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: all .2s; white-space: nowrap;
+}
+.wtab.active { border-color: var(--accent); color: var(--accent); background: var(--surface); }
+
+/* DAY TABS */
+.day-tabs {
+  display: flex; background: var(--surface);
+  padding: 8px 12px; gap: 8px;
+  position: sticky; top: 0; z-index: 100; border-bottom: 1px solid var(--border);
+}
+.dtab {
+  flex: 1; padding: 9px 4px; border-radius: 10px;
+  border: 1px solid var(--border); background: var(--card);
+  color: var(--muted); font-family: 'Bebas Neue', sans-serif;
+  font-size: 17px; letter-spacing: 1px; cursor: pointer; text-align: center; transition: all .2s;
+}
+.dtab.active { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #000; border-color: transparent; }
+.dtab-sub {
+  font-family: 'DM Sans', sans-serif; font-size: 8px; font-weight: 500;
+  letter-spacing: .5px; text-transform: uppercase; display: block; margin-top: 1px; opacity: .8;
+}
+
+/* PROGRESS */
+.progress-area { padding: 8px 14px 0; }
+.progress-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; display: flex; justify-content: space-between; }
+.progress-bar { height: 3px; background: var(--border); border-radius: 4px; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--green)); border-radius: 4px; transition: width .4s ease; }
+
+/* CONTENT */
+.day-panel { display: none; padding: 12px 14px; }
+.day-panel.active { display: block; }
+
+.section-title {
+  font-family: 'Bebas Neue', sans-serif; font-size: 12px; letter-spacing: 3px;
+  color: var(--accent); text-transform: uppercase; margin: 16px 0 8px;
+  display: flex; align-items: center; gap: 10px;
+}
+.section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.section-title:first-child { margin-top: 2px; }
+
+/* EXERCISE CARD */
+.exercise-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 14px; margin-bottom: 8px; overflow: hidden; transition: border-color .2s;
+}
+.exercise-card.completed { border-color: var(--green); background: #171f17; }
+.card-top { padding: 12px 12px 10px; }
+.card-header { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 7px; }
+.exercise-name { font-weight: 600; font-size: 14px; line-height: 1.3; flex: 1; }
+.check-circle {
+  width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--muted); font-size: 13px; cursor: pointer; flex-shrink: 0;
+  transition: all .2s; background: var(--surface); user-select: none;
+}
+.exercise-card.completed .check-circle { background: var(--green); border-color: var(--green); color: #000; font-weight: 700; }
+
+.meta-row { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 8px; }
+.badge {
+  display: inline-flex; align-items: center; gap: 3px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 6px; padding: 2px 7px; font-size: 11px;
+}
+.badge.reps { border-color: #3498db44; color: #5dade2; }
+.badge.rest { border-color: #9b59b644; color: #a569bd; }
+.badge.rpe  { border-color: #e74c3c44; color: #e74c3c; }
+
+/* EDITABLE FIELDS */
+.edit-row { display: flex; gap: 6px; }
+.edit-group { flex: 1; min-width: 0; }
+.edit-label { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 3px; }
+.edit-input {
+  width: 100%; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 7px; padding: 6px 8px; font-size: 12px; color: var(--text);
+  font-family: 'DM Sans', sans-serif; outline: none; transition: border-color .2s;
+}
+.edit-input:focus { border-color: var(--accent); }
+.edit-input.obs { font-style: italic; }
+
+/* VIDEO TOGGLE */
+.btn-video-row {
+  width: 100%; background: #180c0c; border: none; border-top: 1px solid var(--border);
+  color: #e74c3c; padding: 9px 12px; font-size: 12px; font-weight: 600;
+  cursor: pointer; font-family: 'DM Sans', sans-serif;
+  display: flex; align-items: center; gap: 7px; transition: background .2s;
+}
+.btn-video-row:hover, .btn-video-row.vopen { background: #220f0f; }
+.vtoggle-arrow { margin-left: auto; font-size: 10px; transition: transform .25s; }
+.btn-video-row.vopen .vtoggle-arrow { transform: rotate(180deg); }
+.video-wrap { max-height: 0; overflow: hidden; transition: max-height .35s ease; background: #000; }
+.video-wrap.vopen { max-height: 260px; }
+.video-wrap iframe { width: 100%; aspect-ratio: 16/9; border: none; display: block; }
+
+/* RESET */
+.reset-btn {
+  display: block; margin: 14px auto 0; background: transparent;
+  border: 1px solid var(--border); color: var(--muted); border-radius: 8px;
+  padding: 6px 16px; font-size: 11px; cursor: pointer;
+  font-family: 'DM Sans', sans-serif; transition: all .2s;
+}
+.reset-btn:hover { border-color: #e74c3c44; color: #e74c3c; }
+
+/* EMPTY */
+.empty-state { text-align: center; padding: 40px 20px; color: var(--muted); }
+.empty-state .icon { font-size: 40px; margin-bottom: 10px; }
+.empty-state p { font-size: 13px; line-height: 1.6; }
+
+/* TOAST */
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(100px);
+  background: var(--card); border: 1px solid var(--green); border-radius: 10px;
+  padding: 10px 20px; font-size: 13px; font-weight: 500; color: var(--green);
+  z-index: 9999; transition: transform .3s ease; white-space: nowrap;
+  box-shadow: 0 4px 24px #00000066;
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+.toast.err { border-color: #e74c3c; color: #e74c3c; }
+
+/* LOADING */
+.loading-overlay {
+  display: none; position: fixed; inset: 0; background: #0d0f14dd;
+  z-index: 500; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+}
+.loading-overlay.show { display: flex; }
+.loading-spin { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
+.loading-text { font-size: 13px; color: var(--muted); }
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner { display: inline-block; width: 11px; height: 11px; border: 2px solid #00000033; border-top-color: #000; border-radius: 50%; animation: spin .6s linear infinite; }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-spin"></div>
+  <div class="loading-text" id="loadingText">Cargando rutina…</div>
+</div>
+<div class="toast" id="toast"></div>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-sub">Plan de entrenamiento</div>
+  <h1>MI RUTINA</h1>
+  <div class="week-badge" id="weekBadge">–</div>
+</div>
+
+<!-- Config -->
+<div class="config-section">
+  <div class="config-row">
+    <input class="config-input" id="sheetUrl" type="url"
+      placeholder="Link de Google Sheets (público)…"
+      value="https://docs.google.com/spreadsheets/d/1dLY4XouNf4CaoOtxzMFB4ojUO9_XV3pK/edit">
+    <button class="btn-load" id="btnLoad" onclick="loadSheet()">
+      <span id="btnLoadTxt">↻ Cargar</span>
+    </button>
+  </div>
+  <div class="sync-msg" id="syncMsg"></div>
+  <div class="save-bar" id="saveBar">
+    <span class="save-bar-text">✏️ Tenés cambios sin guardar</span>
+    <button class="btn-save" id="btnSave" onclick="saveToSheet()">💾 Guardar en Sheet</button>
+  </div>
+</div>
+
+<!-- Week tabs -->
+<div class="week-tabs-wrap" id="weekTabs"></div>
+
+<!-- Day tabs -->
+<div class="day-tabs" id="dayTabs">
+  <button class="dtab active" onclick="switchDay(0)">DÍA 1<span class="dtab-sub">–</span></button>
+  <button class="dtab" onclick="switchDay(1)">DÍA 2<span class="dtab-sub">–</span></button>
+  <button class="dtab" onclick="switchDay(2)">DÍA 3<span class="dtab-sub">–</span></button>
+</div>
+
+<!-- Progress -->
+<div class="progress-area">
+  <div class="progress-label"><span>Progreso</span><span id="progressText">0 / 0</span></div>
+  <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+</div>
+
+<!-- Panels -->
+<div id="panel0" class="day-panel active"></div>
+<div id="panel1" class="day-panel"></div>
+<div id="panel2" class="day-panel"></div>
+
+<script>
+// ══════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════
+let allWeeks   = {};   // { 'Semana 1': { days:[...] }, ... }
+let weekNames  = [];
+let activeWeek = 0;
+let activeDay  = 0;
+let openVideos = {};   // { 'di_ei': bool }
+
+let userEdits = JSON.parse(localStorage.getItem('gt_edits') || '{}');
+let completed = JSON.parse(localStorage.getItem('gt_completed') || '{}');
+let pendingChanges = false;
+
+const DEFAULT_SHEET_ID = '1dLY4XouNf4CaoOtxzMFB4ojUO9_XV3pK';
+
+// ══════════════════════════════════════════
+//  KEYS
+// ══════════════════════════════════════════
+function weekName()  { return weekNames[activeWeek] || 'S0'; }
+function eKey(di,ei) { return `${weekName()}_${di}_${ei}`; }
+function cKey(di,ei) { return `${weekName()}_${di}_${ei}`; }
+
+// ══════════════════════════════════════════
+//  FETCH FROM GOOGLE SHEETS
+//  CSV export — works from local files on mobile
+// ══════════════════════════════════════════
+function getSheetId(url) {
+  const m = (url||'').match(/\/d\/([a-zA-Z0-9_-]+)/);
+  return m ? m[1] : DEFAULT_SHEET_ID;
+}
+
+async function fetchSheetCSV(sid, sheetName) {
+  const url = sheetName
+    ? `https://docs.google.com/spreadsheets/d/${sid}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`
+    : `https://docs.google.com/spreadsheets/d/${sid}/gviz/tq?tqx=out:csv`;
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const text = await res.text();
+  if (!text || text.length < 5) throw new Error('Hoja vacía');
+  if (text.trim().startsWith('<')) throw new Error('Sin acceso');
+  return text;
+}
+
+function parseCSV(csv) {
+  const rows = [];
+  for (const line of csv.split('\n')) {
+    const cells = []; let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (inQ && line[i+1] === '"') { cur += '"'; i++; }
+        else inQ = !inQ;
+      } else if (ch === ',' && !inQ) { cells.push(cur.trim()); cur = ''; }
+      else cur += ch;
+    }
+    cells.push(cur.trim());
+    rows.push(cells);
+  }
+  return rows;
+}
+
+async function loadSheet() {
+  const rawUrl = document.getElementById('sheetUrl').value.trim();
+  const sid = getSheetId(rawUrl);
+  setBtnLoading(true);
+  setSyncMsg('Conectando con Google Sheets…', 'info');
+  showLoading('Cargando datos…');
+
+  try {
+    allWeeks = {}; weekNames = [];
+
+    // Strategy 1: named tabs "Semana 1" … "Semana 10"
+    for (let i = 1; i <= 10; i++) {
+      const name = `Semana ${i}`;
+      try {
+        const csv = await fetchSheetCSV(sid, name);
+        const parsed = parseRows(parseCSV(csv));
+        if (parsed && parsed.days.some(d => d.sections.some(s => s.exercises.length > 0))) {
+          allWeeks[name] = parsed; weekNames.push(name);
+        } else break;
+      } catch(e) { break; }
+    }
+
+    // Strategy 2: default tab (no name)
+    if (weekNames.length === 0) {
+      try {
+        const csv = await fetchSheetCSV(sid, null);
+        const parsed = parseRows(parseCSV(csv));
+        if (parsed && parsed.days.some(d => d.sections.some(s => s.exercises.length > 0))) {
+          allWeeks['Semana 1'] = parsed; weekNames.push('Semana 1');
+        }
+      } catch(e) {}
+    }
+
+    // Strategy 3: gid=0,1,2...
+    if (weekNames.length === 0) {
+      for (let gid = 0; gid <= 9; gid++) {
+        try {
+          const url = `https://docs.google.com/spreadsheets/d/${sid}/gviz/tq?tqx=out:csv&gid=${gid}`;
+          const res = await fetch(url, { cache: 'no-store' });
+          if (!res.ok) break;
+          const text = await res.text();
+          if (!text || text.trim().startsWith('<')) break;
+          const parsed = parseRows(parseCSV(text));
+          if (parsed && parsed.days.some(d => d.sections.some(s => s.exercises.length > 0))) {
+            const name = `Semana ${gid+1}`;
+            allWeeks[name] = parsed; weekNames.push(name);
+          }
+        } catch(e) { break; }
+      }
+    }
+
+    if (weekNames.length === 0) throw new Error(
+      'No se encontraron rutinas. Verificá que las hojas del Sheet se llamen "Semana 1", "Semana 2", etc.'
+    );
+
+    localStorage.setItem('gt_sheetId', sid);
+    localStorage.setItem('gt_sheetUrl', rawUrl);
+    activeWeek = weekNames.length - 1; activeDay = 0; openVideos = {};
+    renderWeekTabs(); renderDayTabs(); renderAll(); updateWeekBadge();
+    setSyncMsg(`✓ ${weekNames.length} semana(s) cargadas`, 'ok');
+    showToast(`✓ ${weekNames.length} semana(s) cargadas`);
+
+  } catch(e) {
+    setSyncMsg('⚠ ' + e.message, 'err');
+    showToast('Error: ' + e.message, true);
+    if (weekNames.length === 0) loadBuiltIn();
+  }
+  setBtnLoading(false); hideLoading();
+}
+
+// ══════════════════════════════════════════
+//  PARSE ROWS → { days }
+// ══════════════════════════════════════════
+function parseRows(rows) {
+  const days = [];
+  let curDay = null, curSec = null;
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const c0 = row[0] || '', c1 = row[1] || '';
+    if (!c0 && !c1) continue;
+
+    // Day header: DIA 1 / DÍA 2 ...
+    if (/^D[IÍ]A\s*\d/i.test(c0)) {
+      const num = c0.match(/\d+/)?.[0] || (days.length + 1);
+      curDay = { label: `DÍA ${num}`, focus: '', sections: [] };
+      curSec = null; days.push(curDay); continue;
+    }
+    if (!curDay) continue;
+
+    // Section headers
+    if (/entrada.{0,10}calor/i.test(c0)) {
+      curSec = { title: 'Entrada en Calor', exercises: [] };
+      curDay.sections.push(curSec); continue;
+    }
+    if (/zona\s*media/i.test(c0)) {
+      curSec = { title: 'Zona Media', exercises: [] };
+      curDay.sections.push(curSec); continue;
+    }
+    if (/entrenamiento/i.test(c0)) {
+      const focus = c0.replace(/entrenamiento/i,'').replace(/[():]/g,'').trim();
+      curSec = { title: 'Entrenamiento' + (focus ? ' — '+focus : ''), exercises: [] };
+      if (focus) curDay.focus = focus;
+      curDay.sections.push(curSec); continue;
+    }
+    // Skip column headers
+    if (/^ejercicio$/i.test(c0) || /^(video|series|descanso)/i.test(c1)) continue;
+
+    // Exercise row
+    if (curSec && c0 && !/^(ejercicio|series|descanso|rpe|video)/i.test(c0)) {
+      curSec.exercises.push({
+        name:   c0,
+        video:  c1.startsWith('http') ? c1 : '',
+        reps:   row[2] || '',
+        rest:   row[3] || '',
+        rpe:    row[4] || '',
+        weight: row[5] || '',
+        obs:    row[6] || '',
+        rowIdx: i
+      });
+    }
+  }
+
+  // pad to 3 days
+  while (days.length < 3)
+    days.push({ label:`DÍA ${days.length+1}`, focus:'', sections:[] });
+
+  // auto-fill focus from section title
+  days.forEach(d => {
+    if (!d.focus) {
+      const s = d.sections.find(s => /entrenamiento/i.test(s.title));
+      if (s) d.focus = s.title.replace(/entrenamiento\s*[—-]?\s*/i,'').trim();
+    }
+  });
+
+  return days.length ? { days } : null;
+}
+
+// ══════════════════════════════════════════
+//  BUILT-IN FALLBACK
+// ══════════════════════════════════════════
+function loadBuiltIn() {
+  const d = builtInData();
+  allWeeks  = { 'Semana 1': d };
+  weekNames = ['Semana 1'];
+  activeWeek = 0; activeDay = 0; openVideos = {};
+  renderWeekTabs(); renderDayTabs(); renderAll(); updateWeekBadge();
+}
+
+function builtInData() {
+  return { days: [
+    { label:'DÍA 1', focus:'Pecho · Bíceps', sections:[
+      { title:'Entrada en Calor', exercises:[
+        {name:'Mov. articular Cadera',      reps:'2x10', video:'https://www.youtube.com/shorts/eu7CXsemhPk'},
+        {name:'Mov. articular Torso',       reps:'2x10', video:'https://www.youtube.com/shorts/oHJdCLxZlZY'},
+        {name:'Mov. articular Hombros',     reps:'2x10', video:'https://www.youtube.com/watch?v=ZjuVhZaqjrQ'},
+        {name:'Mov. articular Tobillo/Rodilla', reps:'2x10', video:'https://www.youtube.com/shorts/h1zgwXSA5XY'},
+      ]},
+      { title:'Zona Media', exercises:[
+        {name:'Oblicuos con pesa rusa', reps:'2x12', rest:"20''", video:'https://www.youtube.com/shorts/txi8b0FBixE'},
+        {name:'Lumbares en máquina',    reps:'2x20', rest:"20''", video:'https://www.youtube.com/shorts/5zYz96GMfAg'},
+      ]},
+      { title:'Entrenamiento — Pecho · Bíceps', exercises:[
+        {name:'Prensa horizontal',                    reps:'3x10', rest:"2'", rpe:'2', weight:'40 kg',  video:'https://www.youtube.com/shorts/dmC_V7h3Xlg'},
+        {name:'Sillón de cuádriceps',                 reps:'3x12', rest:"2'", rpe:'3', weight:'40 kg',  video:'https://www.youtube.com/shorts/iNvPzf15KKA'},
+        {name:'Press banca con mancuernas',           reps:'4x10', rest:"3'", rpe:'3', weight:'16 kg',  video:'https://www.youtube.com/shorts/48L0oQApm_0'},
+        {name:'Apertura con mancuernas',              reps:'4x12', rest:"2'", rpe:'3', weight:'10 kg',  video:'https://www.youtube.com/shorts/_cRGbQxgwn8'},
+        {name:'Curl bíceps alternado c/ mancuernas',  reps:'4x12', rest:"2'", rpe:'2', weight:'10 kg',  video:'https://www.youtube.com/shorts/ygb5M3lc-dc'},
+        {name:'Bíceps martillo c/ isometría (4-8-12)',reps:'4x12', rest:"2'", rpe:'3', weight:'8 kg',   video:'https://www.youtube.com/shorts/qScJnRNO6wk'},
+      ]}
+    ]},
+    { label:'DÍA 2', focus:'Espalda · Hombros', sections:[
+      { title:'Entrada en Calor', exercises:[
+        {name:'Mov. articular Cadera',      reps:'2x10', video:'https://www.youtube.com/shorts/eu7CXsemhPk'},
+        {name:'Mov. articular Torso',       reps:'2x10', video:'https://www.youtube.com/shorts/oHJdCLxZlZY'},
+        {name:'Mov. articular Hombros',     reps:'2x10', video:'https://www.youtube.com/watch?v=ZjuVhZaqjrQ'},
+        {name:'Mov. articular Tobillo/Rodilla', reps:'2x10', video:'https://www.youtube.com/shorts/h1zgwXSA5XY'},
+      ]},
+      { title:'Zona Media', exercises:[
+        {name:'Puente 3 apoyos',  reps:'2x6 vueltas', rest:"20''", video:'https://www.youtube.com/shorts/umPWS5gofGE'},
+        {name:'Puente escalador', reps:'2x20',         rest:"20''", video:'https://www.youtube.com/shorts/xJz9XC1K3ss'},
+      ]},
+      { title:'Entrenamiento — Espalda · Hombros', exercises:[
+        {name:'Remo en T',                          reps:'4x10',     rest:"2'", rpe:'3', weight:'20 kg',          video:'https://www.youtube.com/shorts/VHNDDUGktrE'},
+        {name:'Jalón al pecho agarre supino',       reps:'4x10',     rest:"2'", rpe:'3', weight:'35 kg',          video:'https://www.youtube.com/shorts/VnLY_duYJKI'},
+        {name:'Press militar cerrado con barra',    reps:'4x8',      rest:"2'", rpe:'3', weight:'3.5 kg por lado', video:'https://www.youtube.com/shorts/jpi8pC95ubY'},
+        {name:'Vuelos combinados (Lat + Frontales)',reps:'4x10 (5+5)',rest:"2'", rpe:'2', weight:'6 kg',           video:'https://www.youtube.com/shorts/WSM-GmG43mo'},
+        {name:'Press francés con mancuernas',       reps:'4x12',     rest:"2'", rpe:'3', weight:'7 kg',           video:'https://www.youtube.com/shorts/FgN0vyx8jNE'},
+        {name:'Fondos en banco o paralelas',        reps:'4x12',     rest:"2'", rpe:'2',                          video:'https://www.youtube.com/shorts/wN_9d37DO4M'},
+      ]}
+    ]},
+    { label:'DÍA 3', focus:'Piernas · Bíceps', sections:[
+      { title:'Entrada en Calor', exercises:[
+        {name:'Mov. articular Cadera',      reps:'2x10', video:'https://www.youtube.com/shorts/eu7CXsemhPk'},
+        {name:'Mov. articular Torso',       reps:'2x10', video:'https://www.youtube.com/shorts/oHJdCLxZlZY'},
+        {name:'Mov. articular Hombros',     reps:'2x10', video:'https://www.youtube.com/watch?v=ZjuVhZaqjrQ'},
+        {name:'Mov. articular Tobillo/Rodilla', reps:'2x10', video:'https://www.youtube.com/shorts/h1zgwXSA5XY'},
+      ]},
+      { title:'Zona Media', exercises:[
+        {name:'Rueda abdominal', reps:'2x12', rest:"20''", video:'https://www.youtube.com/shorts/pTOsnzYMiXc'},
+        {name:'Puente lateral',  reps:'2x20', rest:"20''", video:'https://www.youtube.com/shorts/fNsxKTKfMNI'},
+      ]},
+      { title:'Entrenamiento — Piernas · Bíceps', exercises:[
+        {name:'Sentadilla libre con barra',       reps:'3x8',      rest:"3'", rpe:'3', weight:'12.5 kg', obs:'7.5 kg por lado + barra', video:'https://www.youtube.com/shorts/7xeLHxobaWs'},
+        {name:'Camilla isquios',                  reps:'3x12',     rest:"2'", rpe:'3', weight:'25 kg',               video:'https://www.youtube.com/shorts/rdWO5PhwY4I'},
+        {name:'Dominadas',                        reps:'3x7',      rest:"3'", rpe:'1',                obs:'Entre 7 y 6 reps', video:'https://www.youtube.com/shorts/foiX1-FSlRk'},
+        {name:'Vuelos posteriores c/ mancuernas', reps:'4x12',     rest:"2'", rpe:'2', weight:'4 kg',                video:'https://www.youtube.com/shorts/b8HMNz4UMww'},
+        {name:'Mariposa (3 reps excéntricas)',     reps:'4x12',     rest:"2'", rpe:'3', weight:'30 kg',               video:'https://www.youtube.com/shorts/Y_GU2pRCL6o'},
+        {name:'Flexiones cerradas',               reps:'4x fallo', rest:"3'", rpe:'1',                               video:'https://www.youtube.com/shorts/0pUL8z6HoBc'},
+        {name:'Curl bíceps c/ barra en polea',    reps:'4x fallo', rest:"3'", rpe:'1',                               video:'https://www.youtube.com/shorts/oJGSW0z5Hew'},
+      ]}
+    ]}
+  ]};
+}
+
+// ══════════════════════════════════════════
+//  RENDER
+// ══════════════════════════════════════════
+function getVid(url) {
+  if (!url) return null;
+  const m = url.match(/(?:shorts\/|v=|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+function esc(s) { return (s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+
+function renderWeekTabs() {
+  document.getElementById('weekTabs').innerHTML = weekNames.map((n,i) =>
+    `<button class="wtab${i===activeWeek?' active':''}" onclick="switchWeek(${i})">${n}</button>`
+  ).join('');
+}
+
+function renderDayTabs() {
+  const data = allWeeks[weekNames[activeWeek]];
+  if (!data) return;
+  document.getElementById('dayTabs').innerHTML = data.days.map((d,i) =>
+    `<button class="dtab${i===activeDay?' active':''}" onclick="switchDay(${i})">
+      ${d.label}<span class="dtab-sub">${d.focus||'–'}</span>
+    </button>`
+  ).join('');
+}
+
+function renderAll() {
+  const data = allWeeks[weekNames[activeWeek]];
+  if (!data) return;
+
+  data.days.forEach((day, di) => {
+    const panel = document.getElementById(`panel${di}`);
+    if (!panel) return;
+
+    const hasExercises = day.sections.some(s => s.exercises.length > 0);
+    if (!hasExercises) {
+      panel.innerHTML = `<div class="empty-state"><div class="icon">🏋️</div><p>Sin ejercicios para este día.</p></div>`;
+      return;
+    }
+
+    let html = '', ei = 0;
+    day.sections.forEach(sec => {
+      html += `<div class="section-title">${sec.title}</div>`;
+      sec.exercises.forEach(ex => {
+        const k = eKey(di, ei), ck = cKey(di, ei);
+        const done  = !!completed[ck];
+        const edit  = userEdits[k] || {};
+        const wt    = edit.weight !== undefined ? edit.weight : (ex.weight || '');
+        const ob    = edit.obs    !== undefined ? edit.obs    : (ex.obs    || '');
+        const vid   = getVid(ex.video);
+        const vk    = `${di}_${ei}`;
+        const vOpen = !!openVideos[vk];
+
+        html += `
+<div class="exercise-card${done?' completed':''}" id="card_${k}">
+  <div class="card-top">
+    <div class="card-header">
+      <div class="exercise-name">${ex.name}</div>
+      <div class="check-circle" onclick="toggleDone('${ck}','${k}')">${done?'✓':'○'}</div>
+    </div>
+    <div class="meta-row">
+      ${ex.reps ? `<span class="badge reps">🔁 ${ex.reps}</span>` : ''}
+      ${ex.rest ? `<span class="badge rest">⏱ ${ex.rest}</span>`  : ''}
+      ${ex.rpe  ? `<span class="badge rpe">RPE ${ex.rpe}</span>`   : ''}
+    </div>
+    <div class="edit-row">
+      <div class="edit-group">
+        <div class="edit-label">🏋️ Peso</div>
+        <input class="edit-input" type="text" placeholder="ej. 20 kg" value="${esc(wt)}"
+          oninput="saveEdit('${k}','weight',this.value)" inputmode="decimal">
+      </div>
+      <div class="edit-group">
+        <div class="edit-label">📌 Observaciones</div>
+        <input class="edit-input obs" type="text" placeholder="Notas…" value="${esc(ob)}"
+          oninput="saveEdit('${k}','obs',this.value)">
+      </div>
+    </div>
+  </div>
+  ${vid ? `
+  <button class="btn-video-row${vOpen?' vopen':''}" id="vbtn_${vk}" onclick="toggleVideo('${vk}','${vid}')">
+    <span>▶</span><span>Ver video del ejercicio</span>
+    <span class="vtoggle-arrow">${vOpen?'▲':'▼'}</span>
+  </button>
+  <div class="video-wrap${vOpen?' vopen':''}" id="vwrap_${vk}">
+    ${vOpen?`<iframe src="https://www.youtube.com/embed/${vid}?autoplay=0" allowfullscreen loading="lazy"></iframe>`:''}
+  </div>` : ''}
+</div>`;
+        ei++;
+      });
+    });
+
+    html += `<button class="reset-btn" onclick="resetDay(${di})">↺ Reiniciar día ${di+1}</button>`;
+    panel.innerHTML = html;
+  });
+
+  updateProgress();
+}
+
+// ══════════════════════════════════════════
+//  INTERACTIONS
+// ══════════════════════════════════════════
+function switchWeek(i) {
+  activeWeek = i; activeDay = 0; openVideos = {};
+  renderWeekTabs(); renderDayTabs(); renderAll(); updateWeekBadge();
+  document.querySelectorAll('.day-panel').forEach((p,j) => p.classList.toggle('active', j===0));
+}
+
+function switchDay(i) {
+  activeDay = i;
+  document.querySelectorAll('.day-panel').forEach((p,j) => p.classList.toggle('active', j===i));
+  document.querySelectorAll('.dtab').forEach((t,j) => t.classList.toggle('active', j===i));
+  updateProgress();
+}
+
+function toggleDone(ck, k) {
+  completed[ck] = !completed[ck];
+  localStorage.setItem('gt_completed', JSON.stringify(completed));
+  const card = document.getElementById('card_' + k);
+  if (!card) return;
+  card.classList.toggle('completed', completed[ck]);
+  card.querySelector('.check-circle').textContent = completed[ck] ? '✓' : '○';
+  updateProgress();
+}
+
+function saveEdit(k, field, val) {
+  if (!userEdits[k]) userEdits[k] = {};
+  userEdits[k][field] = val;
+  localStorage.setItem('gt_edits', JSON.stringify(userEdits));
+  if (!pendingChanges) { pendingChanges = true; document.getElementById('saveBar').classList.add('visible'); }
+}
+
+function resetDay(di) {
+  if (!confirm('¿Reiniciar progreso de este día?')) return;
+  const data = allWeeks[weekNames[activeWeek]];
+  let ei = 0;
+  data.days[di].sections.forEach(s => s.exercises.forEach(() => { delete completed[cKey(di,ei)]; ei++; }));
+  localStorage.setItem('gt_completed', JSON.stringify(completed));
+  renderAll();
+}
+
+function toggleVideo(vk, vid) {
+  openVideos[vk] = !openVideos[vk];
+  const wrap = document.getElementById('vwrap_' + vk);
+  const btn  = document.getElementById('vbtn_'  + vk);
+  if (!wrap || !btn) return;
+  if (openVideos[vk]) {
+    wrap.innerHTML = `<iframe src="https://www.youtube.com/embed/${vid}?autoplay=0" allowfullscreen loading="lazy"></iframe>`;
+    wrap.classList.add('vopen'); btn.classList.add('vopen');
+    btn.querySelector('.vtoggle-arrow').textContent = '▲';
+    setTimeout(() => wrap.scrollIntoView({ behavior:'smooth', block:'nearest' }), 120);
+  } else {
+    wrap.innerHTML = '';
+    wrap.classList.remove('vopen'); btn.classList.remove('vopen');
+    btn.querySelector('.vtoggle-arrow').textContent = '▼';
+  }
+}
+
+// ══════════════════════════════════════════
+//  PROGRESS
+// ══════════════════════════════════════════
+function updateProgress() {
+  const data = allWeeks[weekNames[activeWeek]];
+  if (!data) return;
+  const day = data.days[activeDay];
+  if (!day) return;
+  let total = 0, done = 0, ei = 0;
+  day.sections.forEach(s => s.exercises.forEach(() => {
+    total++;
+    if (completed[cKey(activeDay, ei)]) done++;
+    ei++;
+  }));
+  document.getElementById('progressText').textContent = `${done} / ${total}`;
+  document.getElementById('progressFill').style.width = total ? `${done/total*100}%` : '0%';
+}
+
+// ══════════════════════════════════════════
+//  SAVE TO SHEET
+// ══════════════════════════════════════════
+async function saveToSheet() {
+  // Locally always saved via localStorage.
+  // For Sheet write-back: needs a Google Apps Script webhook.
+  const asUrl = localStorage.getItem('gt_appsScript') || '';
+
+  if (!asUrl) {
+    // Show instructions
+    const entered = prompt(
+      '💡 Para escribir de vuelta en el Sheet necesitás un Google Apps Script.\n\n' +
+      'Si ya tenés la URL del webhook, pegala acá.\n' +
+      'Si no, tus datos quedan guardados en el dispositivo y podés exportar después.\n\n' +
+      'URL del Apps Script (o cancelá para guardar solo local):'
+    );
+    if (!entered) {
+      showToast('✓ Guardado localmente en el dispositivo');
+      pendingChanges = false;
+      document.getElementById('saveBar').classList.remove('visible');
+      return;
+    }
+    localStorage.setItem('gt_appsScript', entered.trim());
+  }
+
+  const btn = document.getElementById('btnSave');
+  btn.disabled = true; btn.textContent = '⏳…';
+
+  // Build payload
+  const wn   = weekNames[activeWeek];
+  const data = allWeeks[wn];
+  const changes = [];
+  data.days.forEach((day, di) => {
+    let ei = 0;
+    day.sections.forEach(s => s.exercises.forEach(ex => {
+      const edit = userEdits[eKey(di, ei)];
+      if (edit) changes.push({ week: wn, day: di+1, ex: ex.name, rowIdx: ex.rowIdx, ...edit });
+      ei++;
+    }));
+  });
+
+  try {
+    const url = localStorage.getItem('gt_appsScript');
+    await fetch(url, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'update', changes })
+    });
+    showToast('✓ Guardado en Google Sheets');
+    pendingChanges = false;
+    document.getElementById('saveBar').classList.remove('visible');
+  } catch(e) {
+    showToast('Error al conectar. Guardado local OK.', true);
+  }
+
+  btn.disabled = false; btn.textContent = '💾 Guardar en Sheet';
+}
+
+// ══════════════════════════════════════════
+//  UI HELPERS
+// ══════════════════════════════════════════
+function setBtnLoading(on) {
+  document.getElementById('btnLoad').disabled = on;
+  document.getElementById('btnLoadTxt').innerHTML = on ? '<span class="spinner"></span>' : '↻ Cargar';
+}
+function setSyncMsg(msg, type) {
+  const el = document.getElementById('syncMsg');
+  el.textContent = msg;
+  el.className = 'sync-msg' + (type ? ' '+type : '');
+}
+function showLoading(txt) {
+  document.getElementById('loadingText').textContent = txt;
+  document.getElementById('loadingOverlay').classList.add('show');
+}
+function hideLoading() { document.getElementById('loadingOverlay').classList.remove('show'); }
+function showToast(msg, isErr=false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast' + (isErr?' err':'') + ' show';
+  setTimeout(() => t.classList.remove('show'), 3200);
+}
+function updateWeekBadge() {
+  document.getElementById('weekBadge').textContent = weekNames[activeWeek] || '–';
+}
+
+// ══════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════
+(function init() {
+  const saved = localStorage.getItem('gt_sheetUrl');
+  if (saved) document.getElementById('sheetUrl').value = saved;
+  loadBuiltIn();   // instant UI with built-in data
+  loadSheet();     // then try to fetch Sheet
+})();
+</script>
+</body>
+</html>
