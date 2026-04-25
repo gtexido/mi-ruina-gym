@@ -695,12 +695,9 @@ function updateProgress() {
 //  SAVE TO SHEET
 // ══════════════════════════════════════════
 async function saveToSheet() {
-  // Guarda automáticamente en el dispositivo
-  localStorage.setItem('gt_edits', JSON.stringify(userEdits));
-  showToast('✓ Cambios guardados localmente');
-  pendingChanges = false;
-  document.getElementById('saveBar').classList.remove('visible');
-}
+  // Locally always saved via localStorage.
+  // For Sheet write-back: needs a Google Apps Script webhook.
+  const asUrl = localStorage.getItem('gt_appsScript') || '';
 
   if (!asUrl) {
     // Show instructions
