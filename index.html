@@ -235,11 +235,8 @@ body {
 <!-- Config -->
 <div class="config-section">
   <div class="config-row">
-    <input class="config-input" id="sheetUrl" type="url"
-      placeholder="Link de Google Sheets (público)…"
-      value="https://docs.google.com/spreadsheets/d/1dLY4XouNf4CaoOtxzMFB4ojUO9_XV3pK/edit">
     <button class="btn-load" id="btnLoad" onclick="loadSheet()">
-      <span id="btnLoadTxt">↻ Cargar</span>
+      <span id="btnLoadTxt">↻ Cargar rutina</span>
     </button>
   </div>
   <div class="sync-msg" id="syncMsg"></div>
@@ -284,7 +281,6 @@ let userEdits = JSON.parse(localStorage.getItem('gt_edits') || '{}');
 let completed = JSON.parse(localStorage.getItem('gt_completed') || '{}');
 let pendingChanges = false;
 
-const DEFAULT_SHEET_ID = '1dLY4XouNf4CaoOtxzMFB4ojUO9_XV3pK';
 
 // ══════════════════════════════════════════
 //  KEYS
@@ -297,40 +293,10 @@ function cKey(di,ei) { return `${weekName()}_${di}_${ei}`; }
 //  FETCH FROM GOOGLE SHEETS
 //  CSV export — works from local files on mobile
 // ══════════════════════════════════════════
-function getSheetId(url) {
-  const m = (url||'').match(/\/d\/([a-zA-Z0-9_-]+)/);
-  return m ? m[1] : DEFAULT_SHEET_ID;
-}
 
-async function fetchSheetCSV(sid, sheetName) {
-  const url = sheetName
-    ? `https://docs.google.com/spreadsheets/d/${sid}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`
-    : `https://docs.google.com/spreadsheets/d/${sid}/gviz/tq?tqx=out:csv`;
-  const res = await fetch(url, { cache: 'no-store' });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const text = await res.text();
-  if (!text || text.length < 5) throw new Error('Hoja vacía');
-  if (text.trim().startsWith('<')) throw new Error('Sin acceso');
-  return text;
-}
 
-function parseCSV(csv) {
-  const rows = [];
-  for (const line of csv.split('\n')) {
-    const cells = []; let cur = '', inQ = false;
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-      if (ch === '"') {
-        if (inQ && line[i+1] === '"') { cur += '"'; i++; }
-        else inQ = !inQ;
-      } else if (ch === ',' && !inQ) { cells.push(cur.trim()); cur = ''; }
-      else cur += ch;
-    }
-    cells.push(cur.trim());
-    rows.push(cells);
-  }
-  return rows;
-}
+
+
 
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxIHQtRrIJHBOb3GqJQdfCSExeh_fpg4nkwilz5D39XOV45fjROLSKT6EzT8KpZigss/exec';
 
@@ -352,8 +318,6 @@ function fetchJsonp(url) {
 }
 
 async function loadSheet() {
-  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxIHQtRrIJHBOb3GqJQdfCSExeh_fpg4nkwilz5D39XOV45fjROLSKT6EzT8KpZigss/exec";
-
   setBtnLoading(true);
   setSyncMsg('Conectando con Google Sheets…', 'info');
   showLoading('Cargando datos…');
@@ -412,22 +376,26 @@ function parseRows(rows) {
     if (!c0 && !c1) continue;
 
     // Day header: DIA 1 / DÍA 2 ...
-    if (/^D[IÍ]A\s*\d/i.test(c0)) {
-      const num = c0.match(/\d+/)?.[0] || (days.length + 1);
-      curDay = { label: `DÍA ${num}`, focus: '', sections: [] };
-      curSec = null; days.push(curDay); continue;
-    }
+    if (/^D[IÍ]A\s*\d/i.test(c0) || /entrenamiento en casa/i.test(c0)) {
+  const num = c0.match(/\d+/)?.[0] || (days.length + 1);
+  curDay = { label: `DÍA ${num}`, focus: '', sections: [] };
+  curSec = null;
+  days.push(curDay);
+  continue;
+}
     if (!curDay) continue;
 
     // Section headers
     if (/entrada.{0,10}calor/i.test(c0)) {
-      curSec = { title: 'Entrada en Calor', exercises: [] };
-      curDay.sections.push(curSec); continue;
-    }
+  curSec = { title: 'Entrada en Calor', exercises: [] };
+  curDay.sections.push(curSec);
+  continue;
+}
     if (/zona\s*media/i.test(c0)) {
-      curSec = { title: 'Zona Media', exercises: [] };
-      curDay.sections.push(curSec); continue;
-    }
+  curSec = { title: 'Zona Media', exercises: [] };
+  curDay.sections.push(curSec);
+  continue;
+}
     if (/entrenamiento/i.test(c0)) {
       const focus = c0.replace(/entrenamiento/i,'').replace(/[():]/g,'').trim();
       curSec = { title: 'Entrenamiento' + (focus ? ' — '+focus : ''), exercises: [] };
@@ -438,7 +406,11 @@ function parseRows(rows) {
     if (/^ejercicio$/i.test(c0) || /^(video|series|descanso)/i.test(c1)) continue;
 
     // Exercise row
-    if (curSec && c0 && !/^(ejercicio|series|descanso|rpe|video)/i.test(c0)) {
+    if (
+  curSec &&
+  c0 &&
+  !/^(ejercicio|series|descanso|rpe|video|observaciones)$/i.test(c0)
+) {
       curSec.exercises.push({
         name:   c0,
         video:  c1.startsWith('http') ? c1 : '',
@@ -782,7 +754,7 @@ async function saveToSheet() {
 // ══════════════════════════════════════════
 function setBtnLoading(on) {
   document.getElementById('btnLoad').disabled = on;
-  document.getElementById('btnLoadTxt').innerHTML = on ? '<span class="spinner"></span>' : '↻ Cargar';
+  document.getElementById('btnLoadTxt').innerHTML = on ? '<span class="spinner"></span>' : '↻ Cargar rutina';
 }
 function setSyncMsg(msg, type) {
   const el = document.getElementById('syncMsg');
@@ -807,10 +779,8 @@ function updateWeekBadge() {
 //  INIT
 // ══════════════════════════════════════════
 (function init() {
-  const saved = localStorage.getItem('gt_sheetUrl');
-  if (saved) document.getElementById('sheetUrl').value = saved;
-  loadBuiltIn();   // instant UI with built-in data
-  loadSheet();     // then try to fetch Sheet
+  loadBuiltIn();   // carga instantánea local
+  loadSheet();     // luego trae desde Google Sheets
 })();
 </script>
 </body>
