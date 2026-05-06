@@ -313,10 +313,64 @@ function getSid(url) {
 }
 
 // ══════════════════════════════════════════
-//  FETCH  (3 estrategias)
+//  FETCH GOOGLE SHEETS — TODAS LAS SOLAPAS REALES
+//  Regla:
+//  1) Cargar todas las solapas conocidas que existan: Semana 1..30 + extras.
+//  2) Evitar duplicados/solapas falsas comparando el contenido CSV.
+//  3) Al abrir, posicionarse en la última Semana numérica encontrada.
 // ══════════════════════════════════════════
+const MAX_WEEK_TO_SCAN = 30;
+const EXTRA_SHEETS_TO_SCAN = ['Entrenamiento en casa', 'Casa', 'Rutina casa'];
+
+function getGid(url) {
+  const m = (url || '').match(/[?&]gid=(\d+)/);
+  return m ? Number(m[1]) : null;
+}
+
+function sheetScanList() {
+  const weeks = Array.from({ length: MAX_WEEK_TO_SCAN }, (_, i) => `Semana ${i + 1}`);
+  return [...weeks, ...EXTRA_SHEETS_TO_SCAN];
+}
+
+function csvSignature(csv) {
+  return (csv || '')
+    .replace(/\r/g, '')
+    .split('\n')
+    .map(l => l.trim())
+    .filter(Boolean)
+    .join('\n')
+    .slice(0, 20000);
+}
+
+function hasRealExercises(parsed) {
+  return !!parsed && parsed.days.some(d => d.sections.some(s => s.exercises.length > 0));
+}
+
+function semanaNumber(name) {
+  const m = (name || '').match(/^Semana\s+(\d+)$/i);
+  return m ? Number(m[1]) : null;
+}
+
+function getLastTrainingWeekIndex(names) {
+  let bestIdx = names.length ? names.length - 1 : 0;
+  let bestNum = -1;
+  names.forEach((n, idx) => {
+    const num = semanaNumber(n);
+    if (num !== null && num > bestNum) {
+      bestNum = num;
+      bestIdx = idx;
+    }
+  });
+  return bestIdx;
+}
+
+function firstDayWithExercises(data) {
+  if (!data || !data.days) return 0;
+  const idx = data.days.findIndex(d => d.sections.some(s => s.exercises.length > 0));
+  return idx >= 0 ? idx : 0;
+}
+
 async function fetchCSV(sid, sheetParam) {
-  // sheetParam: string (name) or number (gid) or null (default)
   let url = `https://docs.google.com/spreadsheets/d/${sid}/gviz/tq?tqx=out:csv`;
   if (sheetParam !== null && sheetParam !== undefined) {
     if (typeof sheetParam === 'number') url += `&gid=${sheetParam}`;
@@ -331,105 +385,83 @@ async function fetchCSV(sid, sheetParam) {
 
 function parseCSV(csv) {
   const rows = [];
-  for (const line of csv.split('\n')) {
+  for (const line of csv.replace(/\r/g, '').split('\n')) {
     const cells = []; let cur = '', inQ = false;
     for (let i = 0; i < line.length; i++) {
       const ch = line[i];
-      if (ch === '"') { if (inQ && line[i+1]==='"') { cur+='"'; i++; } else inQ=!inQ; }
-      else if (ch === ',' && !inQ) { cells.push(cur.trim()); cur = ''; }
+      if (ch === '"') {
+        if (inQ && line[i + 1] === '"') { cur += '"'; i++; }
+        else inQ = !inQ;
+      } else if (ch === ',' && !inQ) { cells.push(cur.trim()); cur = ''; }
       else cur += ch;
     }
     cells.push(cur.trim());
-    rows.push(cells);
+    rows.push(cells.map(x => (x || '').trim()));
   }
   return rows;
 }
 
-function hasRealExercises(parsed) {
-  return !!(parsed && parsed.days && parsed.days.some(d => d.sections.some(s => s.exercises.length > 0)));
-}
-
-function csvFingerprint(csv) {
-  return (csv || '')
-    .replace(/\r/g, '')
-    .replace(/"/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, 3000);
-}
-
-function parseWeekNumberFromText(text) {
-  const m = (text || '').match(/semana\s*(\d+)/i);
-  return m ? Number(m[1]) : null;
-}
-
 async function loadSheet() {
   const rawUrl = document.getElementById('sheetUrl').value.trim();
-  const sid    = getSid(rawUrl);
+  const sid = getSid(rawUrl);
+
   setBtnLoading(true);
   setSyncMsg('Conectando…', 'info');
-  showLoading('Cargando rutina desde el Sheet…');
+  showLoading('Buscando solapas del Sheet…');
 
   try {
     allWeeks = {}; weekNames = [];
-
-    // ✅ MODO SEGURO:
-    // Hoy tu archivo real está en "Semana 6". Para evitar semanas falsas,
-    // primero buscamos SOLO esa pestaña. Si mañana agregás Semana 7, cambiá esta lista a [6,7].
-    const WEEKS_TO_LOAD = [6];
     const seen = new Set();
 
-    for (const i of WEEKS_TO_LOAD) {
-      const name = `Semana ${i}`;
+    for (const sheetName of sheetScanList()) {
       try {
-        const csv = await fetchCSV(sid, name);
-        const fp = csvFingerprint(csv);
-        if (seen.has(fp)) continue;
+        const csv = await fetchCSV(sid, sheetName);
+        const sig = csvSignature(csv);
+        if (!sig || seen.has(sig)) continue;
+
         const parsed = parseRows(parseCSV(csv));
-        if (hasRealExercises(parsed)) {
-          allWeeks[name] = parsed;
-          weekNames.push(name);
-          seen.add(fp);
-        }
-      } catch(e) {}
+        if (!hasRealExercises(parsed)) continue;
+
+        seen.add(sig);
+        allWeeks[sheetName] = parsed;
+        weekNames.push(sheetName);
+      } catch (e) {
+        // No existe o no es accesible. Se ignora para no crear solapas falsas.
+      }
     }
 
-    // Respaldo: si no encuentra "Semana 6", toma la pestaña por defecto,
-    // pero la etiqueta como Semana 6 para que no aparezcan Semana 1...12 falsas.
+    // Respaldo: si no encuentra por nombre, usa la hoja del link/default.
     if (weekNames.length === 0) {
-      const csv = await fetchCSV(sid, null);
+      const gid = getGid(rawUrl);
+      const csv = await fetchCSV(sid, gid !== null ? gid : null);
       const parsed = parseRows(parseCSV(csv));
       if (hasRealExercises(parsed)) {
-        const inferred = parseWeekNumberFromText(csv) || 6;
-        const name = `Semana ${inferred}`;
-        allWeeks[name] = parsed;
-        weekNames.push(name);
+        const label = gid !== null ? 'Hoja del link' : 'Semana 1';
+        allWeeks[label] = parsed;
+        weekNames.push(label);
       }
     }
 
     if (weekNames.length === 0) {
-      throw new Error('No se encontraron rutinas. Verificá que la hoja sea pública y que exista la pestaña "Semana 6".');
+      throw new Error('No se encontraron rutinas legibles. Revisá que el Sheet sea público y que las solapas tengan ejercicios con links de video.');
     }
 
     localStorage.setItem('gt_sheetUrl', rawUrl);
 
-    // ✅ Siempre abrir en la última semana cargada.
-    activeWeek = weekNames.length - 1;
-    activeDay  = Number(localStorage.getItem('gt_lastDay') || 0);
-    if (activeDay < 0 || activeDay > 2) activeDay = 0;
+    // Siempre abrir en la última Semana numérica. Si no hay Semanas, usa la última solapa cargada.
+    activeWeek = getLastTrainingWeekIndex(weekNames);
+    activeDay = firstDayWithExercises(allWeeks[weekNames[activeWeek]]);
     openVideos = {};
 
     renderWeekTabs();
     renderDayTabs();
     renderAll();
     updateWeekBadge();
-    switchDay(activeDay);
     scrollWeekTabToActive();
 
-    setSyncMsg(`✓ ${weekNames.length} semana(s) — mostrando ${weekNames[activeWeek]}`, 'ok');
+    setSyncMsg(`✓ ${weekNames.length} solapa(s) — mostrando ${weekNames[activeWeek]}`, 'ok');
     showToast(`✓ ${weekNames[activeWeek]} cargada`);
-
-  } catch(e) {
+  } catch (e) {
     setSyncMsg('⚠ ' + e.message, 'err');
     showToast('Error: ' + e.message, true);
     if (weekNames.length === 0) loadBuiltIn();
@@ -440,142 +472,144 @@ async function loadSheet() {
 }
 
 // ══════════════════════════════════════════
-//  PARSE CSV → { days }
+//  PARSE CSV ROBUSTO
+//  Lee filas aunque Google/Excel deje espacios, celdas vacías o encabezados mezclados.
 // ══════════════════════════════════════════
-function normTxt(v) {
-  return (v || '')
+function normalizeText(s) {
+  return (s || '')
     .toString()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase().trim();
+    .trim()
+    .replace(/\s+/g, ' ')
+    .replace(/[’`]/g, "'");
 }
 
-function isBlankRow(row) {
-  return !row || row.every(c => !(c || '').trim());
+function isUrl(s) { return /^https?:\/\//i.test(normalizeText(s)); }
+function firstUrlIndex(row) { return row.findIndex(isUrl); }
+function rowText(row) { return row.map(normalizeText).filter(Boolean).join(' '); }
+
+function isHeaderRow(t) {
+  return /ejercicio\s+video/i.test(t)
+    || /^ejercicio$/i.test(t)
+    || /series\s*y\s*reps/i.test(t)
+    || /video\s+explicativo/i.test(t);
 }
 
-function headerIndex(headers, names) {
-  const h = headers.map(normTxt);
-  for (const n of names) {
-    const nn = normTxt(n);
-    const idx = h.findIndex(x => x === nn || x.includes(nn));
-    if (idx >= 0) return idx;
+function cleanSectionFocus(t) {
+  return normalizeText(t)
+    .replace(/entrenamiento/i, '')
+    .replace(/[():]/g, '')
+    .replace(/[-–—]\s*$/g, '')
+    .trim();
+}
+
+function getExerciseName(row, urlIdx) {
+  // Preferimos el primer texto antes del link.
+  for (let i = 0; i < (urlIdx >= 0 ? urlIdx : row.length); i++) {
+    const v = normalizeText(row[i]);
+    if (v && !isHeaderRow(v) && !/^\d+$/.test(v)) return v;
   }
-  return -1;
+  // Si por algún motivo el nombre quedó después del link.
+  for (let i = 0; i < row.length; i++) {
+    const v = normalizeText(row[i]);
+    if (v && !isUrl(v) && !isHeaderRow(v) && !/^\d+$/.test(v)) return v;
+  }
+  return '';
 }
 
-function looksLikeHeader(row) {
-  const joined = normTxt(row.join(' '));
-  return joined.includes('ejercicio') && (joined.includes('video') || joined.includes('link') || joined.includes('series'));
-}
-
-function cleanCell(v) {
-  return (v || '').toString().replace(/^[-•\s]+/, '').trim();
+function getExerciseValues(row, urlIdx) {
+  const values = row.slice(urlIdx + 1).map(normalizeText).filter(Boolean);
+  return {
+    reps: values[0] || '',
+    rest: values[1] || '',
+    rpe: values[2] || '',
+    weight: values[3] || '',
+    obs: values.slice(4).join(' ')
+  };
 }
 
 function parseRows(rows) {
-  const days = [];
-  let curDay = null, curSec = null;
-  let map = { name:0, video:1, reps:2, rest:3, rpe:4, weight:5, obs:6 };
-
-  function ensureSection(title) {
-    if (!curDay) return null;
-    curSec = { title, exercises: [] };
-    curDay.sections.push(curSec);
-    return curSec;
-  }
-
-  function addExercise(row, rowIdx) {
-    if (!curDay) return;
-    if (!curSec) ensureSection('Entrenamiento');
-    const name = cleanCell(row[map.name] || '');
-    if (!name) return;
-    const n = normTxt(name);
-    if (/^(dia|semana|entrada|zona media|entrenamiento|ejercicio|video|series|descanso|peso|observaciones)$/.test(n)) return;
-
-    const videoRaw = cleanCell(row[map.video] || '');
-    curSec.exercises.push({
-      name,
-      video: videoRaw.startsWith('http') ? videoRaw : '',
-      reps:   cleanCell(row[map.reps]   || ''),
-      rest:   cleanCell(row[map.rest]   || ''),
-      rpe:    cleanCell(row[map.rpe]    || ''),
-      weight: cleanCell(row[map.weight] || ''),
-      obs:    cleanCell(row[map.obs]    || ''),
-      rowIdx
-    });
-  }
+  const dayMap = {};
+  let curDay = null;
+  let curSec = null;
 
   for (let i = 0; i < rows.length; i++) {
-    const row = rows[i] || [];
-    if (isBlankRow(row)) continue;
+    const row = rows[i].map(normalizeText);
+    const t = rowText(row);
+    if (!t) continue;
 
-    const c0 = cleanCell(row[0] || '');
-    const c1 = cleanCell(row[1] || '');
-    const joined = cleanCell(row.join(' '));
-    const nj = normTxt(joined);
-
-    if (looksLikeHeader(row)) {
-      map = {
-        name:   headerIndex(row, ['ejercicio', 'nombre', 'movimiento']),
-        video:  headerIndex(row, ['video', 'link', 'url']),
-        reps:   headerIndex(row, ['series', 'reps', 'repeticiones']),
-        rest:   headerIndex(row, ['descanso']),
-        rpe:    headerIndex(row, ['rpe']),
-        weight: headerIndex(row, ['peso', 'carga', 'kg']),
-        obs:    headerIndex(row, ['observaciones', 'observacion', 'notas', 'consideraciones'])
-      };
-      if (map.name < 0) map.name = 0;
-      if (map.video < 0) map.video = 1;
-      if (map.reps < 0) map.reps = 2;
-      if (map.rest < 0) map.rest = 3;
-      if (map.rpe < 0) map.rpe = 4;
-      if (map.weight < 0) map.weight = 5;
-      if (map.obs < 0) map.obs = 6;
-      continue;
-    }
-
-    // Día: soporta "DIA 1", "DÍA 1 - ESPALDA + HOMBROS", etc.
-    if (/^d[ií]a\s*\d/i.test(c0) || /^d[ií]a\s*\d/i.test(joined)) {
-      const src = /^d[ií]a\s*\d/i.test(c0) ? c0 : joined;
-      const num = src.match(/\d+/)?.[0] || (days.length + 1);
-      const focus = src.replace(/^d[ií]a\s*\d\s*[-–—:]?\s*/i, '').trim();
-      curDay = { label:`DÍA ${num}`, focus, sections:[] };
+    // Soporta: "DÍA 1", "Día 1: Espalda-Hombros", "DIA 2 - Pecho Tríceps".
+    const dayMatch = t.match(/\bD[IÍ]A\s*(\d+)\b\s*[:\-–—]?\s*(.*)$/i);
+    if (dayMatch && /^D[IÍ]A\s*\d+/i.test(t)) {
+      const num = Number(dayMatch[1]);
+      const focus = normalizeText(dayMatch[2] || '').replace(/^[-–—:]+/, '').trim();
+      if (!dayMap[num]) dayMap[num] = { label: `DÍA ${num}`, focus: focus || '', sections: [] };
+      else if (focus && !dayMap[num].focus) dayMap[num].focus = focus;
+      curDay = dayMap[num];
       curSec = null;
-      days.push(curDay);
       continue;
     }
 
     if (!curDay) continue;
 
-    if (/entrada.{0,12}calor/i.test(nj) || /^movilidad/i.test(nj)) {
-      ensureSection('Entrada en Calor');
-      if (!/entrada/i.test(normTxt(c0)) && c0 && c1.startsWith('http')) addExercise(row, i);
+    if (/entrada\s*en\s*calor/i.test(t) || /^mov\.?\s*articular/i.test(t)) {
+      if (!curDay.sections.some(s => s.title === 'Entrada en Calor')) {
+        curSec = { title: 'Entrada en Calor', exercises: [] };
+        curDay.sections.push(curSec);
+      } else {
+        curSec = curDay.sections.find(s => s.title === 'Entrada en Calor');
+      }
+      if (/entrada\s*en\s*calor/i.test(t)) continue;
+    }
+
+    if (/zona\s*media/i.test(t)) {
+      curSec = { title: 'Zona Media', exercises: [] };
+      curDay.sections.push(curSec);
       continue;
     }
 
-    if (/zona\s*media/i.test(nj) || /core/i.test(nj)) {
-      ensureSection('Zona Media');
-      continue;
-    }
-
-    if (/entrenamiento/i.test(nj)) {
-      const focus = joined.replace(/entrenamiento/i,'').replace(/[():]/g,'').trim();
-      ensureSection('Entrenamiento' + (focus ? ' — ' + focus : ''));
+    if (/entrenamiento/i.test(t)) {
+      const focus = cleanSectionFocus(t);
+      curSec = { title: 'Entrenamiento' + (focus ? ' — ' + focus : ''), exercises: [] };
       if (focus) curDay.focus = focus;
+      curDay.sections.push(curSec);
       continue;
     }
 
-    addExercise(row, i);
+    if (isHeaderRow(t)) continue;
+
+    const urlIdx = firstUrlIndex(row);
+
+    // Si hay link, es ejercicio. Si todavía no hay sección, lo manda a Entrenamiento.
+    if (urlIdx >= 0) {
+      if (!curSec) {
+        curSec = { title: 'Entrenamiento' + (curDay.focus ? ' — ' + curDay.focus : ''), exercises: [] };
+        curDay.sections.push(curSec);
+      }
+      const name = getExerciseName(row, urlIdx);
+      if (!name) continue;
+      const vals = getExerciseValues(row, urlIdx);
+      curSec.exercises.push({
+        name,
+        video: row[urlIdx],
+        reps: vals.reps,
+        rest: vals.rest,
+        rpe: vals.rpe,
+        weight: vals.weight,
+        obs: vals.obs,
+        rowIdx: i
+      });
+    }
   }
 
-  while (days.length < 3) {
-    days.push({ label:`DÍA ${days.length+1}`, focus:'', sections:[] });
-  }
+  const nums = Object.keys(dayMap).map(Number).sort((a, b) => a - b);
+  const days = nums.map(n => dayMap[n]);
+
+  while (days.length < 3) days.push({ label: `DÍA ${days.length + 1}`, focus: '', sections: [] });
 
   days.forEach(d => {
     if (!d.focus) {
       const s = d.sections.find(s => /entrenamiento/i.test(s.title));
-      if (s) d.focus = s.title.replace(/entrenamiento\s*[—-]?\s*/i,'').trim();
+      if (s) d.focus = s.title.replace(/entrenamiento\s*[—-]?\s*/i, '').trim();
     }
   });
 
