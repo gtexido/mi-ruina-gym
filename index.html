@@ -345,67 +345,85 @@ function parseCSV(csv) {
   return rows;
 }
 
+function hasRealExercises(parsed) {
+  return !!(parsed && parsed.days && parsed.days.some(d => d.sections.some(s => s.exercises.length > 0)));
+}
+
+function csvFingerprint(csv) {
+  return (csv || '')
+    .replace(/\r/g, '')
+    .replace(/"/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 3000);
+}
+
+function parseWeekNumberFromText(text) {
+  const m = (text || '').match(/semana\s*(\d+)/i);
+  return m ? Number(m[1]) : null;
+}
+
 async function loadSheet() {
   const rawUrl = document.getElementById('sheetUrl').value.trim();
   const sid    = getSid(rawUrl);
   setBtnLoading(true);
   setSyncMsg('Conectando…', 'info');
-  showLoading('Cargando semanas desde el Sheet…');
+  showLoading('Cargando rutina desde el Sheet…');
 
   try {
     allWeeks = {}; weekNames = [];
 
-    // Estrategia 1: pestañas llamadas "Semana 1"…"Semana 12"
-    for (let i = 1; i <= 12; i++) {
+    // ✅ MODO SEGURO:
+    // Hoy tu archivo real está en "Semana 6". Para evitar semanas falsas,
+    // primero buscamos SOLO esa pestaña. Si mañana agregás Semana 7, cambiá esta lista a [6,7].
+    const WEEKS_TO_LOAD = [6];
+    const seen = new Set();
+
+    for (const i of WEEKS_TO_LOAD) {
       const name = `Semana ${i}`;
       try {
-        const csv    = await fetchCSV(sid, name);
+        const csv = await fetchCSV(sid, name);
+        const fp = csvFingerprint(csv);
+        if (seen.has(fp)) continue;
         const parsed = parseRows(parseCSV(csv));
-        if (parsed && parsed.days.some(d => d.sections.some(s => s.exercises.length > 0))) {
-          allWeeks[name] = parsed; weekNames.push(name);
-        } else break;
-      } catch(e) { if (i === 1) break; break; }
-    }
-
-    // Estrategia 2: pestaña por defecto (sin nombre)
-    if (weekNames.length === 0) {
-      try {
-        const csv = await fetchCSV(sid, null);
-        const parsed = parseRows(parseCSV(csv));
-        if (parsed && parsed.days.some(d => d.sections.some(s => s.exercises.length > 0))) {
-          allWeeks['Semana 1'] = parsed; weekNames.push('Semana 1');
+        if (hasRealExercises(parsed)) {
+          allWeeks[name] = parsed;
+          weekNames.push(name);
+          seen.add(fp);
         }
       } catch(e) {}
     }
 
-    // Estrategia 3: gid=0,1,2...
+    // Respaldo: si no encuentra "Semana 6", toma la pestaña por defecto,
+    // pero la etiqueta como Semana 6 para que no aparezcan Semana 1...12 falsas.
     if (weekNames.length === 0) {
-      for (let gid = 0; gid <= 9; gid++) {
-        try {
-          const csv = await fetchCSV(sid, gid);
-          const parsed = parseRows(parseCSV(csv));
-          if (parsed && parsed.days.some(d => d.sections.some(s => s.exercises.length > 0))) {
-            const name = `Semana ${gid+1}`;
-            allWeeks[name] = parsed; weekNames.push(name);
-          }
-        } catch(e) { break; }
+      const csv = await fetchCSV(sid, null);
+      const parsed = parseRows(parseCSV(csv));
+      if (hasRealExercises(parsed)) {
+        const inferred = parseWeekNumberFromText(csv) || 6;
+        const name = `Semana ${inferred}`;
+        allWeeks[name] = parsed;
+        weekNames.push(name);
       }
     }
 
-    if (weekNames.length === 0)
-      throw new Error('No se encontraron rutinas. Verificá que las hojas se llamen "Semana 1", "Semana 2", etc. y que el Sheet sea público.');
+    if (weekNames.length === 0) {
+      throw new Error('No se encontraron rutinas. Verificá que la hoja sea pública y que exista la pestaña "Semana 6".');
+    }
 
     localStorage.setItem('gt_sheetUrl', rawUrl);
 
-    // SIEMPRE posicionar en la última semana
+    // ✅ Siempre abrir en la última semana cargada.
     activeWeek = weekNames.length - 1;
-    activeDay  = 0;
+    activeDay  = Number(localStorage.getItem('gt_lastDay') || 0);
+    if (activeDay < 0 || activeDay > 2) activeDay = 0;
     openVideos = {};
 
     renderWeekTabs();
     renderDayTabs();
     renderAll();
     updateWeekBadge();
+    switchDay(activeDay);
     scrollWeekTabToActive();
 
     setSyncMsg(`✓ ${weekNames.length} semana(s) — mostrando ${weekNames[activeWeek]}`, 'ok');
@@ -424,49 +442,135 @@ async function loadSheet() {
 // ══════════════════════════════════════════
 //  PARSE CSV → { days }
 // ══════════════════════════════════════════
+function normTxt(v) {
+  return (v || '')
+    .toString()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().trim();
+}
+
+function isBlankRow(row) {
+  return !row || row.every(c => !(c || '').trim());
+}
+
+function headerIndex(headers, names) {
+  const h = headers.map(normTxt);
+  for (const n of names) {
+    const nn = normTxt(n);
+    const idx = h.findIndex(x => x === nn || x.includes(nn));
+    if (idx >= 0) return idx;
+  }
+  return -1;
+}
+
+function looksLikeHeader(row) {
+  const joined = normTxt(row.join(' '));
+  return joined.includes('ejercicio') && (joined.includes('video') || joined.includes('link') || joined.includes('series'));
+}
+
+function cleanCell(v) {
+  return (v || '').toString().replace(/^[-•\s]+/, '').trim();
+}
+
 function parseRows(rows) {
   const days = [];
   let curDay = null, curSec = null;
+  let map = { name:0, video:1, reps:2, rest:3, rpe:4, weight:5, obs:6 };
 
-  for (let i = 0; i < rows.length; i++) {
-    const row = rows[i];
-    const c0 = row[0] || '', c1 = row[1] || '';
-    if (!c0 && !c1) continue;
-
-    if (/^D[IÍ]A\s*\d/i.test(c0)) {
-      const num = c0.match(/\d+/)?.[0] || (days.length+1);
-      curDay = { label:`DÍA ${num}`, focus:'', sections:[] };
-      curSec = null; days.push(curDay); continue;
-    }
-    if (!curDay) continue;
-
-    if (/entrada.{0,10}calor/i.test(c0)) {
-      curSec = { title:'Entrada en Calor', exercises:[] };
-      curDay.sections.push(curSec); continue;
-    }
-    if (/zona\s*media/i.test(c0)) {
-      curSec = { title:'Zona Media', exercises:[] };
-      curDay.sections.push(curSec); continue;
-    }
-    if (/entrenamiento/i.test(c0)) {
-      const focus = c0.replace(/entrenamiento/i,'').replace(/[():]/g,'').trim();
-      curSec = { title:'Entrenamiento'+(focus?' — '+focus:''), exercises:[] };
-      if (focus) curDay.focus = focus;
-      curDay.sections.push(curSec); continue;
-    }
-    if (/^ejercicio$/i.test(c0) || /^(video|series|descanso)/i.test(c1)) continue;
-
-    if (curSec && c0 && !/^(ejercicio|series|descanso|rpe|video)/i.test(c0)) {
-      curSec.exercises.push({
-        name:c0, video:c1.startsWith('http')?c1:'',
-        reps:row[2]||'', rest:row[3]||'',
-        rpe:row[4]||'', weight:row[5]||'', obs:row[6]||'', rowIdx:i
-      });
-    }
+  function ensureSection(title) {
+    if (!curDay) return null;
+    curSec = { title, exercises: [] };
+    curDay.sections.push(curSec);
+    return curSec;
   }
 
-  while (days.length < 3)
-    days.push({label:`DÍA ${days.length+1}`, focus:'', sections:[]});
+  function addExercise(row, rowIdx) {
+    if (!curDay) return;
+    if (!curSec) ensureSection('Entrenamiento');
+    const name = cleanCell(row[map.name] || '');
+    if (!name) return;
+    const n = normTxt(name);
+    if (/^(dia|semana|entrada|zona media|entrenamiento|ejercicio|video|series|descanso|peso|observaciones)$/.test(n)) return;
+
+    const videoRaw = cleanCell(row[map.video] || '');
+    curSec.exercises.push({
+      name,
+      video: videoRaw.startsWith('http') ? videoRaw : '',
+      reps:   cleanCell(row[map.reps]   || ''),
+      rest:   cleanCell(row[map.rest]   || ''),
+      rpe:    cleanCell(row[map.rpe]    || ''),
+      weight: cleanCell(row[map.weight] || ''),
+      obs:    cleanCell(row[map.obs]    || ''),
+      rowIdx
+    });
+  }
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i] || [];
+    if (isBlankRow(row)) continue;
+
+    const c0 = cleanCell(row[0] || '');
+    const c1 = cleanCell(row[1] || '');
+    const joined = cleanCell(row.join(' '));
+    const nj = normTxt(joined);
+
+    if (looksLikeHeader(row)) {
+      map = {
+        name:   headerIndex(row, ['ejercicio', 'nombre', 'movimiento']),
+        video:  headerIndex(row, ['video', 'link', 'url']),
+        reps:   headerIndex(row, ['series', 'reps', 'repeticiones']),
+        rest:   headerIndex(row, ['descanso']),
+        rpe:    headerIndex(row, ['rpe']),
+        weight: headerIndex(row, ['peso', 'carga', 'kg']),
+        obs:    headerIndex(row, ['observaciones', 'observacion', 'notas', 'consideraciones'])
+      };
+      if (map.name < 0) map.name = 0;
+      if (map.video < 0) map.video = 1;
+      if (map.reps < 0) map.reps = 2;
+      if (map.rest < 0) map.rest = 3;
+      if (map.rpe < 0) map.rpe = 4;
+      if (map.weight < 0) map.weight = 5;
+      if (map.obs < 0) map.obs = 6;
+      continue;
+    }
+
+    // Día: soporta "DIA 1", "DÍA 1 - ESPALDA + HOMBROS", etc.
+    if (/^d[ií]a\s*\d/i.test(c0) || /^d[ií]a\s*\d/i.test(joined)) {
+      const src = /^d[ií]a\s*\d/i.test(c0) ? c0 : joined;
+      const num = src.match(/\d+/)?.[0] || (days.length + 1);
+      const focus = src.replace(/^d[ií]a\s*\d\s*[-–—:]?\s*/i, '').trim();
+      curDay = { label:`DÍA ${num}`, focus, sections:[] };
+      curSec = null;
+      days.push(curDay);
+      continue;
+    }
+
+    if (!curDay) continue;
+
+    if (/entrada.{0,12}calor/i.test(nj) || /^movilidad/i.test(nj)) {
+      ensureSection('Entrada en Calor');
+      if (!/entrada/i.test(normTxt(c0)) && c0 && c1.startsWith('http')) addExercise(row, i);
+      continue;
+    }
+
+    if (/zona\s*media/i.test(nj) || /core/i.test(nj)) {
+      ensureSection('Zona Media');
+      continue;
+    }
+
+    if (/entrenamiento/i.test(nj)) {
+      const focus = joined.replace(/entrenamiento/i,'').replace(/[():]/g,'').trim();
+      ensureSection('Entrenamiento' + (focus ? ' — ' + focus : ''));
+      if (focus) curDay.focus = focus;
+      continue;
+    }
+
+    addExercise(row, i);
+  }
+
+  while (days.length < 3) {
+    days.push({ label:`DÍA ${days.length+1}`, focus:'', sections:[] });
+  }
 
   days.forEach(d => {
     if (!d.focus) {
@@ -475,7 +579,7 @@ function parseRows(rows) {
     }
   });
 
-  return days.length ? {days} : null;
+  return days.length ? { days } : null;
 }
 
 // ══════════════════════════════════════════
@@ -664,6 +768,7 @@ function switchWeek(i) {
 
 function switchDay(i) {
   activeDay=i;
+  localStorage.setItem('gt_lastDay', String(i));
   document.querySelectorAll('.day-panel').forEach((p,j)=>p.classList.toggle('active',j===i));
   document.querySelectorAll('.dtab').forEach((t,j)=>t.classList.toggle('active',j===i));
   updateProgress();
