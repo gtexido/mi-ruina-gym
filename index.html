@@ -370,35 +370,46 @@ function firstDayWithExercises(data) {
   return idx >= 0 ? idx : 0;
 }
 
-async function fetchCSV(sid, sheetParam) {
-  let url = `https://docs.google.com/spreadsheets/d/${sid}/gviz/tq?tqx=out:csv`;
+async function fetchSheetRows(sid, sheetParam) {
+  let url = `https://docs.google.com/spreadsheets/d/${sid}/gviz/tq?tqx=out:json`;
   if (sheetParam !== null && sheetParam !== undefined) {
     if (typeof sheetParam === 'number') url += `&gid=${sheetParam}`;
     else url += `&sheet=${encodeURIComponent(sheetParam)}`;
   }
+
   const res = await fetch(url, { cache: 'no-store' });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
   const text = await res.text();
-  if (!text || text.trim().startsWith('<')) throw new Error('sin acceso');
-  return text;
+  const match = text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\);?$/);
+  if (!match) throw new Error('respuesta inválida del Sheet');
+
+  const json = JSON.parse(match[1]);
+  if (json.status === 'error') throw new Error(json.errors?.[0]?.detailed_message || 'hoja no encontrada');
+
+  const table = json.table;
+  if (!table || !Array.isArray(table.rows)) throw new Error('hoja vacía');
+
+  return table.rows.map(r => {
+    const cells = r.c || [];
+    const maxCols = Math.max(cells.length, table.cols?.length || 0, 8);
+    const row = [];
+    for (let i = 0; i < maxCols; i++) {
+      const cell = cells[i];
+      let value = '';
+      if (cell) value = cell.f ?? cell.v ?? '';
+      row.push(normalizeText(String(value ?? '')));
+    }
+    return row;
+  });
 }
 
-function parseCSV(csv) {
-  const rows = [];
-  for (const line of csv.replace(/\r/g, '').split('\n')) {
-    const cells = []; let cur = '', inQ = false;
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-      if (ch === '"') {
-        if (inQ && line[i + 1] === '"') { cur += '"'; i++; }
-        else inQ = !inQ;
-      } else if (ch === ',' && !inQ) { cells.push(cur.trim()); cur = ''; }
-      else cur += ch;
-    }
-    cells.push(cur.trim());
-    rows.push(cells.map(x => (x || '').trim()));
-  }
-  return rows;
+function rowsSignature(rows) {
+  return (rows || [])
+    .map(r => r.map(c => normalizeText(c)).filter(Boolean).join('|'))
+    .filter(Boolean)
+    .join('\n')
+    .slice(0, 25000);
 }
 
 async function loadSheet() {
@@ -415,11 +426,11 @@ async function loadSheet() {
 
     for (const sheetName of sheetScanList()) {
       try {
-        const csv = await fetchCSV(sid, sheetName);
-        const sig = csvSignature(csv);
+        const rows = await fetchSheetRows(sid, sheetName);
+        const sig = rowsSignature(rows);
         if (!sig || seen.has(sig)) continue;
 
-        const parsed = parseRows(parseCSV(csv));
+        const parsed = parseRows(rows);
         if (!hasRealExercises(parsed)) continue;
 
         seen.add(sig);
@@ -430,11 +441,10 @@ async function loadSheet() {
       }
     }
 
-    // Respaldo: si no encuentra por nombre, usa la hoja del link/default.
     if (weekNames.length === 0) {
       const gid = getGid(rawUrl);
-      const csv = await fetchCSV(sid, gid !== null ? gid : null);
-      const parsed = parseRows(parseCSV(csv));
+      const rows = await fetchSheetRows(sid, gid !== null ? gid : null);
+      const parsed = parseRows(rows);
       if (hasRealExercises(parsed)) {
         const label = gid !== null ? 'Hoja del link' : 'Semana 1';
         allWeeks[label] = parsed;
@@ -443,12 +453,11 @@ async function loadSheet() {
     }
 
     if (weekNames.length === 0) {
-      throw new Error('No se encontraron rutinas legibles. Revisá que el Sheet sea público y que las solapas tengan ejercicios con links de video.');
+      throw new Error('No se encontraron rutinas reales. Revisá nombres de solapas y permisos del Sheet.');
     }
 
     localStorage.setItem('gt_sheetUrl', rawUrl);
 
-    // Siempre abrir en la última Semana numérica. Si no hay Semanas, usa la última solapa cargada.
     activeWeek = getLastTrainingWeekIndex(weekNames);
     activeDay = firstDayWithExercises(allWeeks[weekNames[activeWeek]]);
     openVideos = {};
@@ -461,7 +470,7 @@ async function loadSheet() {
 
     setSyncMsg(`✓ ${weekNames.length} solapa(s) — mostrando ${weekNames[activeWeek]}`, 'ok');
     showToast(`✓ ${weekNames[activeWeek]} cargada`);
-  } catch (e) {
+  } catch(e) {
     setSyncMsg('⚠ ' + e.message, 'err');
     showToast('Error: ' + e.message, true);
     if (weekNames.length === 0) loadBuiltIn();
@@ -528,20 +537,166 @@ function getExerciseValues(row, urlIdx) {
 }
 
 function parseRows(rows) {
+  const normalizedRows = rows.map(r => r.map(normalizeText));
+
+  // Detecta formato ancho: DÍA 1 / DÍA 2 / DÍA 3 en columnas distintas.
+  const headerPositions = findDayHeaderPositions(normalizedRows);
+  if (headerPositions.length >= 2) {
+    return parseWideRows(normalizedRows, headerPositions);
+  }
+
+  // Fallback: formato vertical tradicional.
+  return parseVerticalRows(normalizedRows);
+}
+
+function findDayHeaderPositions(rows) {
+  const positions = [];
+  rows.forEach((row, r) => {
+    row.forEach((cell, c) => {
+      const m = normalizeText(cell).match(/^D[IÍ]A\s*(\d+)\b\s*[:\-–—]?\s*(.*)$/i);
+      if (m) {
+        positions.push({ row: r, col: c, num: Number(m[1]), focus: normalizeText(m[2] || '') });
+      }
+    });
+  });
+
+  // Nos quedamos con la primera aparición por día.
+  const byNum = new Map();
+  positions.forEach(p => { if (!byNum.has(p.num)) byNum.set(p.num, p); });
+  return Array.from(byNum.values()).sort((a, b) => a.col - b.col || a.num - b.num);
+}
+
+function parseWideRows(rows, positions) {
+  const days = [];
+  const maxCols = Math.max(...rows.map(r => r.length));
+
+  positions.forEach((pos, idx) => {
+    const next = positions[idx + 1];
+    const startCol = pos.col;
+    const endCol = next ? next.col : maxCols;
+    const block = rows.slice(pos.row + 1).map(r => r.slice(startCol, endCol));
+    const focus = cleanDayFocus(pos.focus);
+    const day = parseDayBlock(block, pos.num, focus);
+    days.push(day);
+  });
+
+  days.sort((a, b) => Number(a.label.replace(/\D/g, '')) - Number(b.label.replace(/\D/g, '')));
+  while (days.length < 3) days.push({ label: `DÍA ${days.length + 1}`, focus: '', sections: [] });
+  return { days };
+}
+
+function cleanDayFocus(focus) {
+  return normalizeText(focus)
+    .replace(/^[:\-–—]+/, '')
+    .replace(/[_]+/g, ' ')
+    .trim();
+}
+
+function parseDayBlock(blockRows, dayNum, focus) {
+  const day = { label: `DÍA ${dayNum}`, focus: focus || '', sections: [] };
+  let curSec = null;
+
+  for (let i = 0; i < blockRows.length; i++) {
+    const row = blockRows[i].map(normalizeText);
+    const t = rowText(row);
+    if (!t) continue;
+
+    // Sección: prioriza columna 0 para evitar juntar encabezados de toda la fila.
+    const first = row[0] || '';
+    const sectionCandidate = first || t;
+
+    if (/entrada\s*en\s*calor/i.test(sectionCandidate)) {
+      curSec = getOrCreateSection(day, 'Entrada en Calor');
+      continue;
+    }
+    if (/zona\s*media/i.test(sectionCandidate)) {
+      curSec = getOrCreateSection(day, 'Zona Media');
+      continue;
+    }
+    if (/entrenamiento/i.test(sectionCandidate)) {
+      const secFocus = cleanSectionFocus(sectionCandidate);
+      curSec = getOrCreateSection(day, 'Entrenamiento' + (secFocus ? ' — ' + secFocus : ''));
+      if (secFocus && !day.focus) day.focus = secFocus;
+      continue;
+    }
+
+    if (isHeaderRow(t)) continue;
+
+    const ex = parseExerciseRow(row, i);
+    if (ex) {
+      if (!curSec) curSec = getOrCreateSection(day, 'Entrenamiento' + (day.focus ? ' — ' + day.focus : ''));
+      curSec.exercises.push(ex);
+    }
+  }
+
+  return day;
+}
+
+function getOrCreateSection(day, title) {
+  let sec = day.sections.find(s => s.title === title);
+  if (!sec) {
+    sec = { title, exercises: [] };
+    day.sections.push(sec);
+  }
+  return sec;
+}
+
+function parseExerciseRow(row, rowIdx) {
+  // Limpia filas totalmente vacías y encabezados repetidos.
+  const filled = row.map(normalizeText);
+  const t = rowText(filled);
+  if (!t || isHeaderRow(t)) return null;
+
+  const urlIdx = firstUrlIndex(filled);
+
+  // Caso más común en tu Excel: Ejercicio | Video | Series | Descanso | RPE/RIR | Peso | Observaciones.
+  let name = normalizeText(filled[0]);
+  if (!name || /^https?:\/\//i.test(name) || isHeaderRow(name)) {
+    name = getExerciseName(filled, urlIdx >= 0 ? urlIdx : filled.length);
+  }
+
+  if (!name || /^D[IÍ]A\s*\d+/i.test(name)) return null;
+  if (/^(video|series|descanso|rpe|rir|peso|observaciones)$/i.test(name)) return null;
+
+  let video = urlIdx >= 0 ? filled[urlIdx] : '';
+  let reps = '', rest = '', rpe = '', weight = '', obs = '';
+
+  if (urlIdx === 1 || (filled[1] && isUrl(filled[1]))) {
+    reps = filled[2] || '';
+    rest = filled[3] || '';
+    rpe = filled[4] || '';
+    weight = filled[5] || '';
+    obs = filled.slice(6).filter(Boolean).join(' ');
+  } else if (urlIdx >= 0) {
+    const vals = getExerciseValues(filled, urlIdx);
+    reps = vals.reps; rest = vals.rest; rpe = vals.rpe; weight = vals.weight; obs = vals.obs;
+  } else {
+    // Sin link, igual permite cargar ejercicios escritos.
+    reps = filled[1] || '';
+    rest = filled[2] || '';
+    rpe = filled[3] || '';
+    weight = filled[4] || '';
+    obs = filled.slice(5).filter(Boolean).join(' ');
+  }
+
+  return { name, video, reps, rest, rpe, weight, obs, rowIdx };
+}
+
+function parseVerticalRows(rows) {
   const dayMap = {};
   let curDay = null;
   let curSec = null;
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i].map(normalizeText);
+    const first = row[0] || '';
     const t = rowText(row);
     if (!t) continue;
 
-    // Soporta: "DÍA 1", "Día 1: Espalda-Hombros", "DIA 2 - Pecho Tríceps".
-    const dayMatch = t.match(/\bD[IÍ]A\s*(\d+)\b\s*[:\-–—]?\s*(.*)$/i);
-    if (dayMatch && /^D[IÍ]A\s*\d+/i.test(t)) {
+    const dayMatch = first.match(/^D[IÍ]A\s*(\d+)\b\s*[:\-–—]?\s*(.*)$/i);
+    if (dayMatch) {
       const num = Number(dayMatch[1]);
-      const focus = normalizeText(dayMatch[2] || '').replace(/^[-–—:]+/, '').trim();
+      const focus = cleanDayFocus(dayMatch[2] || '');
       if (!dayMap[num]) dayMap[num] = { label: `DÍA ${num}`, focus: focus || '', sections: [] };
       else if (focus && !dayMap[num].focus) dayMap[num].focus = focus;
       curDay = dayMap[num];
@@ -551,68 +706,28 @@ function parseRows(rows) {
 
     if (!curDay) continue;
 
-    if (/entrada\s*en\s*calor/i.test(t) || /^mov\.?\s*articular/i.test(t)) {
-      if (!curDay.sections.some(s => s.title === 'Entrada en Calor')) {
-        curSec = { title: 'Entrada en Calor', exercises: [] };
-        curDay.sections.push(curSec);
-      } else {
-        curSec = curDay.sections.find(s => s.title === 'Entrada en Calor');
-      }
-      if (/entrada\s*en\s*calor/i.test(t)) continue;
-    }
-
-    if (/zona\s*media/i.test(t)) {
-      curSec = { title: 'Zona Media', exercises: [] };
-      curDay.sections.push(curSec);
-      continue;
-    }
-
-    if (/entrenamiento/i.test(t)) {
-      const focus = cleanSectionFocus(t);
-      curSec = { title: 'Entrenamiento' + (focus ? ' — ' + focus : ''), exercises: [] };
+    const sectionCandidate = first || t;
+    if (/entrada\s*en\s*calor/i.test(sectionCandidate)) { curSec = getOrCreateSection(curDay, 'Entrada en Calor'); continue; }
+    if (/zona\s*media/i.test(sectionCandidate)) { curSec = getOrCreateSection(curDay, 'Zona Media'); continue; }
+    if (/entrenamiento/i.test(sectionCandidate)) {
+      const focus = cleanSectionFocus(sectionCandidate);
+      curSec = getOrCreateSection(curDay, 'Entrenamiento' + (focus ? ' — ' + focus : ''));
       if (focus) curDay.focus = focus;
-      curDay.sections.push(curSec);
       continue;
     }
 
     if (isHeaderRow(t)) continue;
 
-    const urlIdx = firstUrlIndex(row);
-
-    // Si hay link, es ejercicio. Si todavía no hay sección, lo manda a Entrenamiento.
-    if (urlIdx >= 0) {
-      if (!curSec) {
-        curSec = { title: 'Entrenamiento' + (curDay.focus ? ' — ' + curDay.focus : ''), exercises: [] };
-        curDay.sections.push(curSec);
-      }
-      const name = getExerciseName(row, urlIdx);
-      if (!name) continue;
-      const vals = getExerciseValues(row, urlIdx);
-      curSec.exercises.push({
-        name,
-        video: row[urlIdx],
-        reps: vals.reps,
-        rest: vals.rest,
-        rpe: vals.rpe,
-        weight: vals.weight,
-        obs: vals.obs,
-        rowIdx: i
-      });
+    const ex = parseExerciseRow(row, i);
+    if (ex) {
+      if (!curSec) curSec = getOrCreateSection(curDay, 'Entrenamiento' + (curDay.focus ? ' — ' + curDay.focus : ''));
+      curSec.exercises.push(ex);
     }
   }
 
   const nums = Object.keys(dayMap).map(Number).sort((a, b) => a - b);
   const days = nums.map(n => dayMap[n]);
-
   while (days.length < 3) days.push({ label: `DÍA ${days.length + 1}`, focus: '', sections: [] });
-
-  days.forEach(d => {
-    if (!d.focus) {
-      const s = d.sections.find(s => /entrenamiento/i.test(s.title));
-      if (s) d.focus = s.title.replace(/entrenamiento\s*[—-]?\s*/i, '').trim();
-    }
-  });
-
   return days.length ? { days } : null;
 }
 
