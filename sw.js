@@ -1,4 +1,4 @@
-const CACHE = 'mi-rutina-v13-squad';
+const CACHE = 'mi-rutina-v2-premium-squad';
 const APP_SHELL = ['/', '/index.html', '/manifest.json', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', event => {
