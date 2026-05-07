@@ -33,7 +33,7 @@
 </div><div class="toast" id="toast"></div>
 <script>
 const DEFAULT_URL='https://docs.google.com/spreadsheets/d/1dLY4XouNf4CaoOtxzMFB4ojUO9_XV3pK/edit?usp=drive_link';
-let book=[], activeSheet=0, activeDay=0, openV={}, completed=JSON.parse(localStorage.getItem('rt_v11_completed')||'{}'), edits=JSON.parse(localStorage.getItem('rt_v11_edits')||'{}');
+let book=[], activeSheet=0, activeDay=0, openV={}, completed=JSON.parse(localStorage.getItem('rt_v12_completed')||'{}'), edits=JSON.parse(localStorage.getItem('rt_v12_edits')||'{}');
 let deferredPrompt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;document.getElementById('installBtn').classList.add('show')});
 document.getElementById('installBtn').onclick=async()=>{if(!deferredPrompt)return;deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;document.getElementById('installBtn').classList.remove('show')};
@@ -45,27 +45,119 @@ function setStatus(m,type=''){const s=document.getElementById('status');s.textCo
 function key(si,di,ei){return `${book[si]?.name||'S'}_${di}_${ei}`}
 async function fetchWorkbook(){const id=sid(document.getElementById('sheetUrl').value);const urls=[`https://docs.google.com/spreadsheets/d/${id}/export?format=xlsx&cachebust=${Date.now()}`,`https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&sheet=Semana%206&cachebust=${Date.now()}`];try{const res=await fetch(urls[0],{cache:'no-store'});if(!res.ok)throw new Error('HTTP '+res.status);const buf=await res.arrayBuffer();return XLSX.read(buf,{type:'array'});}catch(e){throw new Error('No pude descargar el XLSX desde Google Sheets. Revisá que el archivo esté compartido como "Cualquier persona con el link puede ver".');}}
 function sheetToRows(ws){return XLSX.utils.sheet_to_json(ws,{header:1,defval:''});}
-function headerMap(row){const h=row.map(norm);const idx=(arr)=>h.findIndex(x=>arr.some(a=>x.includes(a)));let obs=h.map((x,i)=>x.includes('observ')?i:-1).filter(i=>i>=0);return {name:idx(['ejercicio']),video:idx(['video']),reps:idx(['series']),rest:idx(['descanso']),rpe:idx(['rpe','rir']),weight:idx(['peso']),obs:obs.length?obs[obs.length-1]:-1};}
-function isHeader(row){return row.some(c=>norm(c)==='ejercicio') && row.some(c=>norm(c).includes('series'));}
+function headerMap(row, fallbackNameCol=0){
+  const h=row.map(norm);
+  const idx=(arr)=>h.findIndex(x=>arr.some(a=>x.includes(a)));
+  let name=idx(['ejercicio']);
+  if(name<0) name=fallbackNameCol;
+  const obs=h.map((x,i)=>x.includes('observ')?i:-1).filter(i=>i>=0);
+  return {
+    name,
+    video:idx(['video']),
+    reps:idx(['series','reps']),
+    rest:idx(['descanso']),
+    rpe:idx(['rpe','rir']),
+    weight:idx(['peso']),
+    obs:obs.length?obs[obs.length-1]:-1
+  };
+}
+function rowHasColumnHeader(row){
+  const h=row.map(norm).join(' | ');
+  return h.includes('video') || h.includes('series') || h.includes('descanso') || h.includes('peso') || h.includes('rpe');
+}
+function isHeader(row){
+  return row.some(c=>norm(c)==='ejercicio') && row.some(c=>norm(c).includes('series'));
+}
 function isDay(v){return /^dia\s*\d+/i.test(norm(v));}
 function dayNum(v){return clean(v).match(/\d+/)?.[0]||''}
-function sectionName(v){const n=norm(v);if(n.includes('entrada en calor'))return 'Entrada en calor'; if(n.includes('zona media'))return 'Zona media'; if(n.includes('entrenamiento'))return clean(v).replace(/^ENTRENAMIENTO\s*/i,'Entrenamiento ').replace(/[()]/g,'').trim()||'Entrenamiento'; return null}
-function focusFromSection(sec){if(!sec)return '';let s=sec.replace(/entrada en calor|zona media|entrenamiento/ig,'').replace(/[():]/g,'').trim();return s;}
-function parseSheet(name,rows){let days=[], curDay=null, curSec=null, map=null; const isHome=!/^semana\s*\d+$/i.test(name);
- if(isHome){curDay={label:'CASA',focus:'Entrenamiento en casa',sections:[]};days.push(curDay)}
- for(let r=0;r<rows.length;r++){let row=rows[r]||[], c0=clean(row[0]); if(!row.some(x=>clean(x)))continue;
-   if(isDay(c0)){curDay={label:'DÍA '+dayNum(c0),focus:'',sections:[]};days.push(curDay);curSec=null;map=null;continue;}
-   if(!curDay)continue;
-   const sec=sectionName(c0); if(sec){curSec={title:sec,exercises:[]};curDay.sections.push(curSec);map=null;if(sec.toLowerCase().includes('entrenamiento'))curDay.focus=focusFromSection(sec);continue;}
-   if(isHeader(row)){map=headerMap(row);continue;}
-   if(!curSec||!map||map.name<0)continue;
-   const nameEx=clean(row[map.name]); if(!nameEx || /^ejercicio$/i.test(nameEx))continue;
-   const ex={name:nameEx,video:map.video>=0?clean(row[map.video]):'',reps:map.reps>=0?clean(row[map.reps]):'',rest:map.rest>=0?clean(row[map.rest]):'',rpe:map.rpe>=0?clean(row[map.rpe]):'',weight:map.weight>=0?clean(row[map.weight]):'',obs:map.obs>=0?clean(row[map.obs]):'',row:r+1,cols:{weight:map.weight>=0?map.weight+1:null,obs:map.obs>=0?map.obs+1:null}};
-   if(ex.name && !norm(ex.name).includes('video explicativo'))curSec.exercises.push(ex);
- }
- days=days.filter(d=>d.sections.some(s=>s.exercises.length));
- days.forEach(d=>{if(!d.focus){const ent=d.sections.find(s=>norm(s.title).includes('entrenamiento'));d.focus=focusFromSection(ent?.title)||'—'}});
- return {name,days};}
+function sectionName(v){
+  const n=norm(v);
+  if(n.includes('entrada en calor'))return 'Entrada en calor';
+  if(n.includes('zona media'))return 'Zona media';
+  if(n.includes('entrenamiento'))return clean(v).replace(/^ENTRENAMIENTO\s*/i,'Entrenamiento ').replace(/[()]/g,'').replace(/\s+/g,' ').trim()||'Entrenamiento';
+  return null;
+}
+function focusFromSection(sec){
+  if(!sec)return '';
+  let s=sec.replace(/entrada en calor|zona media|entrenamiento/ig,'').replace(/[():]/g,'').replace(/\s+/g,' ').trim();
+  return s || '';
+}
+function defaultFocusByDay(label){
+  const n=Number((label||'').match(/\d+/)?.[0]||0);
+  if(n===1)return 'Espalda - Hombros';
+  if(n===2)return 'Pecho - Tríceps';
+  if(n===3)return 'Piernas - Bíceps';
+  return '—';
+}
+function ensureSection(day, title){
+  let sec=day.sections.find(s=>norm(s.title)===norm(title));
+  if(!sec){sec={title,exercises:[]};day.sections.push(sec);}
+  return sec;
+}
+function addExercise(curSec,row,map,rowNumber){
+  if(!curSec||!map||map.name<0)return;
+  const nameEx=clean(row[map.name]);
+  if(!nameEx || /^ejercicio$/i.test(nameEx) || norm(nameEx).includes('video explicativo'))return;
+  curSec.exercises.push({
+    name:nameEx,
+    video:map.video>=0?clean(row[map.video]):'',
+    reps:map.reps>=0?clean(row[map.reps]):'',
+    rest:map.rest>=0?clean(row[map.rest]):'',
+    rpe:map.rpe>=0?clean(row[map.rpe]):'',
+    weight:map.weight>=0?clean(row[map.weight]):'',
+    obs:map.obs>=0?clean(row[map.obs]):'',
+    row:rowNumber,
+    cols:{weight:map.weight>=0?map.weight+1:null,obs:map.obs>=0?map.obs+1:null}
+  });
+}
+function parseSheet(name,rows){
+  let days=[], curDay=null, curSec=null, map=null;
+  const isHome=!/^semana\s*\d+$/i.test(name);
+  if(isHome){curDay={label:'CASA',focus:'Entrenamiento en casa',sections:[]};days.push(curDay);}
+
+  for(let r=0;r<rows.length;r++){
+    const row=rows[r]||[];
+    const c0=clean(row[0]);
+    if(!row.some(x=>clean(x))) continue;
+
+    if(isDay(c0)){
+      curDay={label:'DÍA '+dayNum(c0),focus:defaultFocusByDay(c0),sections:[]};
+      days.push(curDay); curSec=null; map=null; continue;
+    }
+    if(!curDay) continue;
+
+    const secTitle=sectionName(c0);
+    if(secTitle){
+      curSec=ensureSection(curDay,secTitle);
+      map=null;
+      if(norm(secTitle).includes('entrenamiento')){
+        curDay.focus=focusFromSection(secTitle)||curDay.focus||defaultFocusByDay(curDay.label);
+      }
+      // Muchas filas de sección son también encabezado: "Zona media:" + Video + Series + Descanso.
+      if(rowHasColumnHeader(row)) map=headerMap(row,0);
+      continue;
+    }
+
+    if(isHeader(row)){
+      // Si aparece encabezado sin sección, corresponde a Entrada en calor del día.
+      if(!curSec) curSec=ensureSection(curDay,'Entrada en calor');
+      map=headerMap(row,0);
+      continue;
+    }
+
+    addExercise(curSec,row,map,r+1);
+  }
+
+  days=days.filter(d=>d.sections.some(s=>s.exercises.length));
+  days.forEach(d=>{
+    d.sections=d.sections.filter(s=>s.exercises.length);
+    if(!d.focus){
+      const ent=d.sections.find(s=>norm(s.title).includes('entrenamiento'));
+      d.focus=focusFromSection(ent?.title)||defaultFocusByDay(d.label);
+    }
+  });
+  return {name,days};
+}
 function sortSheets(names){return names.sort((a,b)=>{const na=Number((a.match(/^Semana\s*(\d+)/i)||[])[1]||9999), nb=Number((b.match(/^Semana\s*(\d+)/i)||[])[1]||9999);if(na!==nb)return na-nb;return a.localeCompare(b);});}
 function chooseActive(){let max=-1,idx=0;book.forEach((s,i)=>{const n=Number((s.name.match(/^Semana\s*(\d+)/i)||[])[1]||-1);if(n>max){max=n;idx=i}});return idx;}
 async function loadWorkout(){setStatus('Cargando Google Sheets…');try{const wb=await fetchWorkbook();const names=sortSheets(wb.SheetNames.filter(n=>/^Semana\s*\d+$/i.test(n)||norm(n).includes('entrenamiento en casa')));book=names.map(n=>parseSheet(n,sheetToRows(wb.Sheets[n]))).filter(s=>s.days.length);activeSheet=chooseActive();activeDay=0;openV={};localStorage.setItem('rt_sheetUrl',document.getElementById('sheetUrl').value);render();setStatus(`✓ ${book.length} solapa(s) reales — mostrando ${book[activeSheet]?.name||'—'}`,'ok');toast('Rutina cargada');document.getElementById('diag').textContent=`Solapas: ${book.map(x=>x.name).join(' | ')}`;}catch(e){setStatus('⚠ '+e.message,'err');toast(e.message,true);document.getElementById('diag').classList.add('show');document.getElementById('diag').textContent=e.message;}}
@@ -75,11 +167,11 @@ function renderDays(){const s=book[activeSheet];document.getElementById('dayTabs
 function renderPanels(){const s=book[activeSheet], d=s?.days[activeDay];const el=document.getElementById('panels');if(!d){el.innerHTML='<div class="empty">Sin datos para mostrar.</div>';updateProgress();return;}let ei=0,html='<div class="panel active">';d.sections.forEach(sec=>{html+=`<div class="section">${sec.title}</div>`;sec.exercises.forEach(ex=>{const k=key(activeSheet,activeDay,ei), ed=edits[k]||{}, done=!!completed[k], wt=ed.weight??ex.weight, ob=ed.obs??ex.obs, vid=(ex.video.match(/(?:shorts\/|v=|youtu\.be\/)([A-Za-z0-9_-]{11})/)||[])[1];html+=`<div class="card ${done?'done':''}" id="c_${ei}"><div class="ctop"><div class="chead"><div class="ename">${ex.name}</div><div class="check" onclick="toggleDone('${k}')">${done?'✓':'○'}</div></div><div class="badges">${ex.reps?`<span class="badge b-reps">🔁 ${ex.reps}</span>`:''}${ex.rest?`<span class="badge b-rest">⏱ ${ex.rest}</span>`:''}${ex.rpe?`<span class="badge b-rpe">RPE ${ex.rpe}</span>`:''}${wt?`<span class="badge b-weight">🏋️ ${wt}</span>`:''}</div><div class="fields"><div class="field"><label>🏋️ Peso</label><input value="${escapeHtml(wt)}" placeholder="ej. 20 kg" oninput="edit('${k}','weight',this.value)"></div><div class="field"><label>📌 Observaciones</label><input value="${escapeHtml(ob)}" placeholder="Notas…" oninput="edit('${k}','obs',this.value)"></div></div></div>${vid?`<button class="video" onclick="toggleVideo(this,'${vid}')"><span>▶ Ver video del ejercicio</span><span>▼</span></button><div class="vbox"></div>`:''}</div>`;ei++})});html+='</div>';el.innerHTML=html;updateProgress()}
 function escapeHtml(s){return clean(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}
 function toggleVideo(btn,vid){const box=btn.nextElementSibling;const open=box.classList.toggle('open');btn.querySelector('span:last-child').textContent=open?'▲':'▼';box.innerHTML=open?`<iframe src="https://www.youtube.com/embed/${vid}" allowfullscreen loading="lazy"></iframe>`:''}
-function toggleDone(k){completed[k]=!completed[k];localStorage.setItem('rt_v11_completed',JSON.stringify(completed));renderPanels()}
-function edit(k,f,v){edits[k]=edits[k]||{};edits[k][f]=v;localStorage.setItem('rt_v11_edits',JSON.stringify(edits))}
-function clearLocalData(){if(!confirm('¿Limpiar pesos/observaciones/progreso guardados solo en este dispositivo?'))return; localStorage.removeItem('rt_v11_completed'); localStorage.removeItem('rt_v11_edits'); completed={}; edits={}; renderPanels(); toast('Datos locales limpiados');}
+function toggleDone(k){completed[k]=!completed[k];localStorage.setItem('rt_v12_completed',JSON.stringify(completed));renderPanels()}
+function edit(k,f,v){edits[k]=edits[k]||{};edits[k][f]=v;localStorage.setItem('rt_v12_edits',JSON.stringify(edits))}
+function clearLocalData(){if(!confirm('¿Limpiar pesos/observaciones/progreso guardados solo en este dispositivo?'))return; localStorage.removeItem('rt_v12_completed'); localStorage.removeItem('rt_v12_edits'); completed={}; edits={}; renderPanels(); toast('Datos locales limpiados');}
 function updateProgress(){const s=book[activeSheet],d=s?.days[activeDay];let total=0,done=0,ei=0;if(d)d.sections.forEach(sec=>sec.exercises.forEach(()=>{total++; if(completed[key(activeSheet,activeDay,ei)])done++; ei++}));document.getElementById('pText').textContent=`${done} / ${total}`;document.getElementById('pFill').style.width=total?`${done/total*100}%`:'0%'}
-function resetDay(){const s=book[activeSheet],d=s?.days[activeDay];if(!d)return;let ei=0;d.sections.forEach(sec=>sec.exercises.forEach(()=>{delete completed[key(activeSheet,activeDay,ei)];ei++}));localStorage.setItem('rt_v11_completed',JSON.stringify(completed));renderPanels()}
+function resetDay(){const s=book[activeSheet],d=s?.days[activeDay];if(!d)return;let ei=0;d.sections.forEach(sec=>sec.exercises.forEach(()=>{delete completed[key(activeSheet,activeDay,ei)];ei++}));localStorage.setItem('rt_v12_completed',JSON.stringify(completed));renderPanels()}
 async function saveRemote(){const url=localStorage.getItem('rt_webhook')||prompt('Pegá la URL del Google Apps Script Web App para escribir en el Sheet. Cancelar = guardar solo en el celular.');if(!url){toast('Guardado local en el celular');return}localStorage.setItem('rt_webhook',url);let changes=[];book.forEach((s,si)=>s.days.forEach((d,di)=>{let ei=0;d.sections.forEach(sec=>sec.exercises.forEach(ex=>{const k=key(si,di,ei),ed=edits[k];if(ed){if(ed.weight!==undefined&&ex.cols.weight)changes.push({sheet:s.name,row:ex.row,col:ex.cols.weight,value:ed.weight});if(ed.obs!==undefined&&ex.cols.obs)changes.push({sheet:s.name,row:ex.row,col:ex.cols.obs,value:ed.obs});}ei++}))}));try{await fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({changes})});toast('Cambios enviados al Sheet');}catch(e){toast('No pude enviar al Sheet',true)}}
 (function init(){const saved=localStorage.getItem('rt_sheetUrl');if(saved)document.getElementById('sheetUrl').value=saved;loadWorkout()})();
 </script>
