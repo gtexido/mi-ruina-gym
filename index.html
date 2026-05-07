@@ -173,7 +173,42 @@ function edit(k,f,v){edits[k]=edits[k]||{};edits[k][f]=v;localStorage.setItem('r
 function clearLocalData(){if(!confirm('¿Limpiar pesos/observaciones/progreso guardados solo en este dispositivo?'))return; localStorage.removeItem('rt_v13_completed'); localStorage.removeItem('rt_v13_edits'); completed={}; edits={}; renderPanels(); toast('Datos locales limpiados');}
 function updateProgress(){const s=book[activeSheet],d=s?.days[activeDay];let total=0,done=0,ei=0;if(d)d.sections.forEach(sec=>sec.exercises.forEach(()=>{total++; if(completed[key(activeSheet,activeDay,ei)])done++; ei++}));document.getElementById('pText').textContent=`${done} / ${total}`;document.getElementById('pFill').style.width=total?`${done/total*100}%`:'0%'}
 function resetDay(){const s=book[activeSheet],d=s?.days[activeDay];if(!d)return;let ei=0;d.sections.forEach(sec=>sec.exercises.forEach(()=>{delete completed[key(activeSheet,activeDay,ei)];ei++}));localStorage.setItem('rt_v13_completed',JSON.stringify(completed));renderPanels()}
-async function saveRemote(){const url=localStorage.getItem('rt_webhook')||prompt('Pegá la URL del Google Apps Script Web App para escribir en el Sheet. Cancelar = guardar solo en el celular.');if(!url){toast('Guardado local en el celular');return}localStorage.setItem('rt_webhook',url);let changes=[];book.forEach((s,si)=>s.days.forEach((d,di)=>{let ei=0;d.sections.forEach(sec=>sec.exercises.forEach(ex=>{const k=key(si,di,ei),ed=edits[k];if(ed){if(ed.weight!==undefined&&ex.cols.weight)changes.push({sheet:s.name,row:ex.row,col:ex.cols.weight,value:ed.weight});if(ed.obs!==undefined&&ex.cols.obs)changes.push({sheet:s.name,row:ex.row,col:ex.cols.obs,value:ed.obs});}ei++}))}));try{await fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({changes})});toast('Cambios enviados al Sheet');}catch(e){toast('No pude enviar al Sheet',true)}}
+async function saveRemote(){
+  const url=(APPS_SCRIPT_URL||'').trim();
+  if(!url){toast('Falta configurar Apps Script',true);return}
+  let changes=[];
+  book.forEach((s,si)=>s.days.forEach((d,di)=>{
+    let ei=0;
+    d.sections.forEach(sec=>sec.exercises.forEach(ex=>{
+      const k=key(si,di,ei), ed=edits[k];
+      if(ed){
+        if(ed.weight!==undefined && ex.cols.weight) changes.push({sheet:s.name,row:ex.row,col:ex.cols.weight,value:ed.weight,field:'weight',exercise:ex.name});
+        if(ed.obs!==undefined && ex.cols.obs) changes.push({sheet:s.name,row:ex.row,col:ex.cols.obs,value:ed.obs,field:'obs',exercise:ex.name});
+      }
+      ei++;
+    }));
+  }));
+  if(!changes.length){toast('No hay cambios nuevos para guardar');return}
+  try{
+    // Enviamos por GET individual para evitar problemas CORS/POST de Apps Script en PWA.
+    for(const c of changes){
+      const qs=new URLSearchParams({
+        action:'updateCell',
+        sheet:c.sheet,
+        row:String(c.row),
+        col:String(c.col),
+        value:String(c.value ?? ''),
+        field:c.field,
+        exercise:c.exercise,
+        ts:String(Date.now())
+      });
+      await fetch(url+'?'+qs.toString(),{method:'GET',mode:'no-cors',cache:'no-store'});
+    }
+    toast('Cambios enviados al Sheet');
+  }catch(e){
+    toast('No pude enviar al Sheet',true);
+  }
+}
 (function init(){const saved=localStorage.getItem('rt_sheetUrl');if(saved)document.getElementById('sheetUrl').value=saved;loadWorkout()})();
 </script>
 </body>
