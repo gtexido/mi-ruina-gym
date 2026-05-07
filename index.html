@@ -30,7 +30,7 @@
 </div>
 <script>
 const DEFAULT_SID='1dLY4XouNf4CaoOtxzMFB4ojUO9_XV3pK';
-const EXPECTED_SHEETS=[...Array.from({length:30},(_,i)=>`Semana ${i+1}`),'Entrenamiento en casa'];
+const EXPECTED_SHEETS=[...Array.from({length:30},(_,i)=>`Semana ${i+1}`),'Entrenamiento en casa']; // se consultan candidatos, pero solo se muestran solapas reales/no duplicadas
 let allWeeks={}, weekNames=[], activeWeek=0, activeDay=0, openVideos={};
 let completed=JSON.parse(localStorage.getItem('gt_completed_v2')||'{}');
 let userEdits=JSON.parse(localStorage.getItem('gt_edits_v2')||'{}');
@@ -50,6 +50,17 @@ function sectionName(c){const raw=norm(c);const t=low(raw);if(t.includes('entrad
 function focusFrom(c){const m=norm(c).match(/\(([^)]+)\)/);return m?m[1].replace(/-/g,' - ').replace(/\s+/g,' ').trim():''}
 function getVid(url){const m=String(url||'').match(/(?:shorts\/|v=|youtu\.be\/)([A-Za-z0-9_-]{11})/);return m?m[1]:null}
 function parseCSV(csv){const rows=[];let row=[],cur='',q=false;for(let i=0;i<csv.length;i++){const ch=csv[i],nx=csv[i+1];if(ch==='"'){if(q&&nx==='"'){cur+='"';i++}else q=!q}else if(ch===','&&!q){row.push(cur);cur=''}else if((ch==='\n'||ch==='\r')&&!q){if(ch==='\r'&&nx==='\n')i++;row.push(cur);rows.push(row);row=[];cur=''}else cur+=ch}row.push(cur);rows.push(row);return rows.map(r=>r.map(norm))}
+
+function sheetSignature(rows){
+  // Google gviz a veces devuelve la primera hoja cuando se pide una solapa inexistente.
+  // Para evitar crear Semana 7...30 falsas, usamos una firma del contenido real.
+  return rows
+    .filter(r=>!isBlankRow(r))
+    .slice(0,80)
+    .map(r=>r.map(c=>low(c)).join('|'))
+    .join('§');
+}
+
 async function fetchCSV(sid,sheet){const url=`https://docs.google.com/spreadsheets/d/${sid}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheet)}&cb=${Date.now()}`;const res=await fetch(url,{cache:'no-store'});if(!res.ok)throw new Error(`HTTP ${res.status}`);const text=await res.text();if(!text||text.trim().startsWith('<'))throw new Error('sin acceso o hoja inexistente');return text}
 function ensureDay(days,sheetName){if(days.length===0){days.push({label:sheetName.toLowerCase().includes('casa')?'CASA':'DÍA 1',focus:sheetName.toLowerCase().includes('casa')?'Entrenamiento en casa':'',sections:[]})}return days[days.length-1]}
 function ensureSection(day,name){let sec={title:name,exercises:[]};day.sections.push(sec);return sec}
@@ -59,9 +70,9 @@ function parseRows(rows,sheetName){let days=[],curDay=null,curSec=null,lastHeade
   return {days};}
 function validParsed(p){return p&&p.days&&p.days.some(d=>d.sections.some(s=>s.exercises.length))}
 function sortSheets(names){return names.sort((a,b)=>{const an=weekNum(a),bn=weekNum(b);if(an&&bn)return an-bn;if(an&&!bn)return -1;if(!an&&bn)return 1;return a.localeCompare(b,'es')})}
-async function loadSheet(){const raw=document.getElementById('sheetUrl').value.trim();const sid=sheetId(raw);setBtn(true);msg('Conectando con Google Sheets…','info');showLoading('Leyendo solapas reales…');diagnostics=[];allWeeks={};weekNames=[];try{for(const sh of EXPECTED_SHEETS){try{const csv=await fetchCSV(sid,sh);const rows=parseCSV(csv);const parsed=parseRows(rows,sh);if(validParsed(parsed)){allWeeks[sh]=parsed;weekNames.push(sh);let count=parsed.days.reduce((a,d)=>a+d.sections.reduce((b,s)=>b+s.exercises.length,0),0);diagnostics.push(`✓ ${sh}: ${parsed.days.length} día(s), ${count} ejercicio(s)`)}}catch(e){}}
+async function loadSheet(){const raw=document.getElementById('sheetUrl').value.trim();const sid=sheetId(raw);setBtn(true);msg('Conectando con Google Sheets…','info');showLoading('Leyendo solapas reales…');diagnostics=[];allWeeks={};weekNames=[];try{const seenSignatures=new Set();for(const sh of EXPECTED_SHEETS){try{const csv=await fetchCSV(sid,sh);const rows=parseCSV(csv);const sig=sheetSignature(rows);if(!sig)continue;if(seenSignatures.has(sig)){diagnostics.push(`↷ ${sh}: omitida, Google devolvió una solapa repetida/no existente`);continue;}const parsed=parseRows(rows,sh);if(validParsed(parsed)){seenSignatures.add(sig);allWeeks[sh]=parsed;weekNames.push(sh);let count=parsed.days.reduce((a,d)=>a+d.sections.reduce((b,s)=>b+s.exercises.length,0),0);diagnostics.push(`✓ ${sh}: ${parsed.days.length} día(s), ${count} ejercicio(s)`)}}catch(e){diagnostics.push(`· ${sh}: no disponible`)}}
     weekNames=sortSheets([...new Set(weekNames)]);if(!weekNames.length)throw new Error('No encontré solapas válidas. Revisá que el archivo esté compartido como público o “cualquier persona con link”.');
-    localStorage.setItem('gt_sheetUrl',raw);const numeric=weekNames.map((n,i)=>({n,i,num:weekNum(n)})).filter(x=>x.num);activeWeek=numeric.length?numeric[numeric.length-1].i:weekNames.length-1;activeDay=0;openVideos={};render();msg(`✓ ${weekNames.length} solapa(s) — mostrando ${weekNames[activeWeek]}`,'ok');toast(`✓ ${weekNames[activeWeek]} cargada`)}catch(e){msg('⚠ '+e.message,'err');toast(e.message,true);renderEmpty()}finally{setBtn(false);hideLoading();}}
+    localStorage.setItem('gt_sheetUrl',raw);const numeric=weekNames.map((n,i)=>({n,i,num:weekNum(n)})).filter(x=>x.num);activeWeek=numeric.length?numeric[numeric.length-1].i:weekNames.length-1;activeDay=0;openVideos={};render();msg(`✓ ${weekNames.length} solapa(s) reales — mostrando ${weekNames[activeWeek]}`,'ok');toast(`✓ ${weekNames[activeWeek]} cargada`)}catch(e){msg('⚠ '+e.message,'err');toast(e.message,true);renderEmpty()}finally{setBtn(false);hideLoading();}}
 function render(){renderWeeks();renderDays();renderPanels();updateWeekBadge();scrollWeekTabToActive();renderDiag()}
 function renderWeeks(){document.getElementById('weekTabs').innerHTML=weekNames.map((n,i)=>`<button class="wtab${i===activeWeek?' active':''}" onclick="switchWeek(${i})">${esc(n)}</button>`).join('')}
 function renderDays(){const data=allWeeks[weekNames[activeWeek]];const days=data?.days||[];document.getElementById('dayTabs').innerHTML=days.map((d,i)=>`<button class="dtab${i===activeDay?' active':''}" onclick="switchDay(${i})">${esc(d.label)}<span class="dtab-sub">${esc(d.focus||'–')}</span></button>`).join('')}
