@@ -272,15 +272,10 @@ body {
 
 <script>
 // ══════════════════════════════════════════
-//  STATE
+//  MI RUTINA — Google Sheets Loader v7
+//  Fuente esperada: solapas verticales A:G
+//  DIA / Entrada en calor / Zona media / ENTRENAMIENTO
 // ══════════════════════════════════════════
-const APP_VERSION = 'rutina-v20260506-vertical-sheets';
-if (localStorage.getItem('gt_storage_version') !== APP_VERSION) {
-  localStorage.removeItem('gt_edits');
-  localStorage.removeItem('gt_completed');
-  localStorage.setItem('gt_storage_version', APP_VERSION);
-}
-
 let allWeeks   = {};
 let weekNames  = [];
 let activeWeek = 0;
@@ -288,27 +283,34 @@ let activeDay  = 0;
 let openVideos = {};
 let userEdits  = JSON.parse(localStorage.getItem('gt_edits')     || '{}');
 let completed  = JSON.parse(localStorage.getItem('gt_completed') || '{}');
+let deferredPrompt = null;
 
 const DEFAULT_SID = '1dLY4XouNf4CaoOtxzMFB4ojUO9_XV3pK';
 const EXTRA_SHEETS = ['Entrenamiento en casa'];
+const MAX_SEMANA = 30;
 
 // ── PWA INSTALL ───────────────────────────
-let deferredPrompt = null;
 window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();
   deferredPrompt = e;
-  document.getElementById('installBtn').classList.add('show');
+  const btn = document.getElementById('installBtn');
+  if (btn) btn.classList.add('show');
 });
-document.getElementById('installBtn').addEventListener('click', async () => {
-  if (!deferredPrompt) return;
-  deferredPrompt.prompt();
-  const { outcome } = await deferredPrompt.userChoice;
-  deferredPrompt = null;
-  document.getElementById('installBtn').classList.remove('show');
-  if (outcome === 'accepted') showToast('✓ App instalada correctamente');
+
+document.addEventListener('click', async (ev) => {
+  if (ev.target && ev.target.id === 'installBtn') {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    document.getElementById('installBtn').classList.remove('show');
+    if (outcome === 'accepted') showToast('✓ App instalada correctamente');
+  }
 });
+
 window.addEventListener('appinstalled', () => {
-  document.getElementById('installBtn').classList.remove('show');
+  const btn = document.getElementById('installBtn');
+  if (btn) btn.classList.remove('show');
   showToast('✓ App instalada');
 });
 
@@ -320,137 +322,271 @@ if ('serviceWorker' in navigator) {
 }
 
 // ══════════════════════════════════════════
-//  KEYS
+//  HELPERS
 // ══════════════════════════════════════════
 const wn   = ()       => weekNames[activeWeek] || 'S0';
-const eKey = (di,ei) => `${wn()}_${di}_${ei}`;
-const cKey = (di,ei) => `${wn()}_${di}_${ei}`;
+const eKey = (di,ei)  => `${wn()}_${di}_${ei}`;
+const cKey = (di,ei)  => `${wn()}_${di}_${ei}`;
+const esc  = (s)      => String(s ?? '').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const text = (v)      => String(v ?? '').replace(/\s+/g, ' ').trim();
+const up   = (v)      => text(v).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
 
 function getSid(url) {
-  const m = (url||'').match(/\/d\/([a-zA-Z0-9_-]+)/);
+  const m = (url || '').match(/\/d\/([a-zA-Z0-9_-]+)/);
   return m ? m[1] : DEFAULT_SID;
 }
 
-function normalizeText(v) {
-  return (v ?? '').toString().replace(/\s+/g, ' ').trim();
+function getVid(url){
+  if(!url) return null;
+  const m = String(url).match(/(?:shorts\/|v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{11})/);
+  return m ? m[1] : null;
 }
 
-function isSheetWithData(parsed) {
-  return parsed && parsed.days && parsed.days.some(d => d.sections.some(s => s.exercises.length > 0));
+function isSemanaName(name) {
+  return /^Semana\s+\d+$/i.test(name);
+}
+function semanaNumber(name) {
+  const m = String(name).match(/Semana\s+(\d+)/i);
+  return m ? Number(m[1]) : -1;
 }
 
-function weekNumber(name) {
-  const m = (name || '').match(/^Semana\s+(\d+)$/i);
-  return m ? Number(m[1]) : null;
-}
-
-function chooseInitialWeekIndex(names) {
-  let bestIdx = names.length - 1;
-  let bestNum = -1;
-  names.forEach((n, i) => {
-    const num = weekNumber(n);
-    if (num !== null && num > bestNum) {
-      bestNum = num;
-      bestIdx = i;
-    }
-  });
-  return bestIdx;
+function sheetCandidates() {
+  const arr = [];
+  for (let i=1; i<=MAX_SEMANA; i++) arr.push(`Semana ${i}`);
+  EXTRA_SHEETS.forEach(x => arr.push(x));
+  return arr;
 }
 
 // ══════════════════════════════════════════
-//  FETCH GOOGLE SHEETS AS JSON
-//  Nota: evitamos CSV para no mezclar encabezados/celdas.
+//  GOOGLE SHEETS JSON
 // ══════════════════════════════════════════
 async function fetchSheetRows(sid, sheetName) {
-  const url = `https://docs.google.com/spreadsheets/d/${sid}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}&t=${Date.now()}`;
+  const url = `https://docs.google.com/spreadsheets/d/${sid}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}&_=${Date.now()}`;
   const res = await fetch(url, { cache: 'no-store' });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const raw = await res.text();
-  if (!raw || raw.trim().startsWith('<')) throw new Error('sin acceso');
+  if (!raw || raw.trim().startsWith('<')) throw new Error('Respuesta HTML / sin acceso');
 
-  const m = raw.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\);?/);
-  if (!m) throw new Error('respuesta inválida');
+  const a = raw.indexOf('{');
+  const b = raw.lastIndexOf('}');
+  if (a < 0 || b < 0) throw new Error('JSON inválido');
 
-  const json = JSON.parse(m[1]);
-  if (json.status === 'error') throw new Error(json.errors?.[0]?.detailed_message || 'hoja no encontrada');
+  const json = JSON.parse(raw.slice(a, b + 1));
+  if (json.status && json.status !== 'ok') throw new Error(json.errors?.[0]?.detailed_message || 'Hoja no disponible');
+  const table = json.table;
+  if (!table || !Array.isArray(table.rows)) throw new Error('Tabla vacía');
 
-  const table = json.table || {};
-  const cols = table.cols || [];
-  const rows = table.rows || [];
-  const colCount = Math.max(7, cols.length || 7);
-
-  return rows.map(r => {
-    const cells = r.c || [];
+  return table.rows.map(r => {
     const out = [];
-    for (let i = 0; i < colCount; i++) {
-      const cell = cells[i];
-      out.push(cell ? (cell.v ?? cell.f ?? '') : '');
+    for (let i = 0; i < 7; i++) {
+      const c = r.c && r.c[i] ? r.c[i] : null;
+      out.push(c ? text(c.f ?? c.v ?? '') : '');
     }
     return out;
   });
 }
 
+function rowsSignature(rows) {
+  return rows
+    .filter(r => r.some(c => text(c)))
+    .map(r => r.map(c => up(c)).join('|'))
+    .join('\n')
+    .slice(0, 5000);
+}
+
+// ══════════════════════════════════════════
+//  PARSER VERTICAL A:G
+// ══════════════════════════════════════════
+function parseRows(rows) {
+  const days = [];
+  let curDay = null;
+  let curSec = null;
+
+  function hasExercises() {
+    return days.some(d => d.sections.some(s => s.exercises.length > 0));
+  }
+
+  function startDay(raw) {
+    const n = String(raw).match(/\d+/)?.[0] || String(days.length + 1);
+    curDay = { label: `DÍA ${n}`, focus: '', sections: [] };
+    curSec = null;
+    days.push(curDay);
+  }
+
+  function startSection(title) {
+    if (!curDay) startDay(`DIA ${days.length + 1}`);
+    curSec = { title, exercises: [] };
+    curDay.sections.push(curSec);
+  }
+
+  function isHeaderRow(r) {
+    const a = up(r[0]), b = up(r[1]), c = up(r[2]);
+    return a === 'EJERCICIO' || b.includes('VIDEO') || c.includes('SERIES');
+  }
+
+  function isBlankRow(r) {
+    return !r.some(c => text(c));
+  }
+
+  for (const row of rows) {
+    if (isBlankRow(row)) continue;
+
+    const c0 = text(row[0]);
+    const u0 = up(c0);
+
+    if (/^DIA\s*\d+/.test(u0)) {
+      startDay(c0);
+      continue;
+    }
+
+    if (!curDay) continue;
+
+    if (u0.includes('ENTRADA') && u0.includes('CALOR')) {
+      startSection('Entrada en Calor');
+      continue;
+    }
+
+    if (u0.includes('ZONA') && u0.includes('MEDIA')) {
+      startSection('Zona Media');
+      continue;
+    }
+
+    if (u0.includes('ENTRENAMIENTO')) {
+      const m = c0.match(/\(([^)]+)\)/);
+      const focus = m ? text(m[1]) : text(c0.replace(/ENTRENAMIENTO/i, '').replace(/[():-]/g,' '));
+      curDay.focus = focus || curDay.focus;
+      startSection('Entrenamiento' + (focus ? ' — ' + focus : ''));
+      continue;
+    }
+
+    if (isHeaderRow(row)) {
+      // En algunas solapas después de DIA 2/DIA 3 no viene el título "Entrada en Calor".
+      // Si aparece el header y todavía no hay sección, asumimos entrada en calor.
+      if (!curSec) startSection('Entrada en Calor');
+      continue;
+    }
+
+    if (!curSec) startSection('Entrada en Calor');
+
+    const name = text(row[0]);
+    if (!name) continue;
+
+    // Evitar que algún texto suelto o link quede como ejercicio.
+    if (up(name).startsWith('HTTP')) continue;
+    if (['VIDEO EXPLICATIVO','SERIES Y REPS','DESCANSO','RPE / RIR','PESO','OBSERVACIONES'].some(h => up(name) === h)) continue;
+
+    const ex = {
+      name,
+      video: String(row[1] || '').startsWith('http') ? text(row[1]) : '',
+      reps:  text(row[2]),
+      rest:  text(row[3]),
+      rpe:   text(row[4]),
+      weight:text(row[5]),
+      obs:   text(row[6])
+    };
+
+    // Agregar solo si parece fila de ejercicio real.
+    if (ex.name && (ex.video || ex.reps || ex.rest || ex.rpe || ex.weight || ex.obs)) {
+      curSec.exercises.push(ex);
+    }
+  }
+
+  // Mantener exactamente 3 tabs visuales para la rutina principal.
+  while (days.length < 3) days.push({ label:`DÍA ${days.length+1}`, focus:'', sections:[] });
+
+  // Limpiar secciones vacías y completar foco si falta.
+  days.forEach(d => {
+    d.sections = d.sections.filter(s => s.exercises.length > 0);
+    if (!d.focus) {
+      const s = d.sections.find(s => up(s.title).includes('ENTRENAMIENTO'));
+      if (s) d.focus = text(s.title.replace(/Entrenamiento\s*[—-]?\s*/i,''));
+    }
+  });
+
+  return hasExercises() ? { days } : null;
+}
+
+// ══════════════════════════════════════════
+//  LOAD SHEETS
+// ══════════════════════════════════════════
 async function loadSheet() {
   const rawUrl = document.getElementById('sheetUrl').value.trim();
-  const sid    = getSid(rawUrl);
+  const sid = getSid(rawUrl);
+
   setBtnLoading(true);
   setSyncMsg('Conectando con Google Sheets…', 'info');
-  showLoading('Cargando solapas reales…');
+  showLoading('Leyendo solapas reales…');
 
   try {
-    allWeeks = {};
-    weekNames = [];
+    allWeeks = {}; weekNames = []; openVideos = {};
+    const seen = new Set();
+    const diagnostics = [];
 
-    const candidates = [
-      ...Array.from({length: 30}, (_, i) => `Semana ${i + 1}`),
-      ...EXTRA_SHEETS
-    ];
-
-    for (const sheetName of candidates) {
+    for (const sheetName of sheetCandidates()) {
       try {
         const rows = await fetchSheetRows(sid, sheetName);
-        const parsed = parseRows(rows, sheetName);
-        if (isSheetWithData(parsed)) {
-          allWeeks[sheetName] = parsed;
-          weekNames.push(sheetName);
+        const sig = rowsSignature(rows);
+        if (!sig || seen.has(sig)) {
+          diagnostics.push(`${sheetName}: omitida por vacía/duplicada`);
+          continue;
         }
-      } catch(e) {
-        // Ignoramos hojas inexistentes. Solo se cargan solapas reales con datos.
+        const parsed = parseRows(rows);
+        if (!parsed) {
+          diagnostics.push(`${sheetName}: sin ejercicios detectados`);
+          continue;
+        }
+        seen.add(sig);
+        allWeeks[sheetName] = parsed;
+        weekNames.push(sheetName);
+        diagnostics.push(`${sheetName}: OK`);
+      } catch (err) {
+        // Silencioso para solapas que no existen; se guarda en debug por si hace falta.
+        diagnostics.push(`${sheetName}: ${err.message}`);
       }
     }
 
-    // Orden: Semanas numéricas ascendente y extras al final.
-    weekNames.sort((a, b) => {
-      const na = weekNumber(a), nb = weekNumber(b);
-      if (na !== null && nb !== null) return na - nb;
-      if (na !== null) return -1;
-      if (nb !== null) return 1;
-      return a.localeCompare(b, 'es');
-    });
-
     if (weekNames.length === 0) {
-      throw new Error('No se encontraron solapas válidas. Verificá permisos públicos y nombres tipo "Semana 1", "Semana 2"...');
+      throw new Error('No se detectaron solapas con rutina. Revisá que el Sheet sea público y tenga DIA 1 / DIA 2 / DIA 3 en A:G.');
     }
+
+    // Ordenar semanas numéricas por número y extras al final.
+    weekNames.sort((a,b) => {
+      const na = semanaNumber(a), nb = semanaNumber(b);
+      if (na >= 0 && nb >= 0) return na - nb;
+      if (na >= 0) return -1;
+      if (nb >= 0) return 1;
+      return a.localeCompare(b);
+    });
 
     localStorage.setItem('gt_sheetUrl', rawUrl);
 
-    // Siempre abrir en la última semana numérica real. Si no hay semanas numéricas, abre la última solapa cargada.
-    activeWeek = chooseInitialWeekIndex(weekNames);
-    activeDay  = 0;
-    openVideos = {};
+    // Siempre abrir en la última semana NUMÉRICA; si no hay numérica, última solapa cargada.
+    let lastNumericIndex = -1;
+    weekNames.forEach((n,i) => { if (isSemanaName(n)) lastNumericIndex = i; });
+    activeWeek = lastNumericIndex >= 0 ? lastNumericIndex : weekNames.length - 1;
+    activeDay = 0;
+
+    window.__rutinaDebug = { sid, weekNames, diagnostics };
 
     renderWeekTabs();
     renderDayTabs();
     renderAll();
+    switchDay(0);
     updateWeekBadge();
     scrollWeekTabToActive();
 
     setSyncMsg(`✓ ${weekNames.length} solapa(s) — mostrando ${weekNames[activeWeek]}`, 'ok');
     showToast(`✓ ${weekNames[activeWeek]} cargada`);
   } catch(e) {
+    allWeeks = {'Sin datos': {days:[
+      {label:'DÍA 1', focus:'', sections:[]},
+      {label:'DÍA 2', focus:'', sections:[]},
+      {label:'DÍA 3', focus:'', sections:[]}
+    ]}};
+    weekNames = ['Sin datos']; activeWeek = 0; activeDay = 0;
+    renderWeekTabs(); renderDayTabs(); renderAll(); updateWeekBadge();
     setSyncMsg('⚠ ' + e.message, 'err');
-    showToast('Error: ' + e.message, true);
-    if (weekNames.length === 0) loadBuiltIn();
+    showToast('Error al cargar Sheet', true);
   }
 
   setBtnLoading(false);
@@ -458,197 +594,8 @@ async function loadSheet() {
 }
 
 // ══════════════════════════════════════════
-//  PARSE VERTICAL SHEET A:G
-//  Estructura esperada:
-//  DIA 1
-//  ENTRADA EN CALOR
-//  Ejercicio | Video | Series | Descanso | RPE | Peso | Observaciones
-//  ...
-//  Zona media
-//  ...
-//  ENTRENAMIENTO (...)
-//  ...
-// ══════════════════════════════════════════
-function parseRows(rows, sheetName='') {
-  const days = [];
-  let curDay = null;
-  let curSec = null;
-  let headerMap = null;
-
-  const newSection = (title) => {
-    if (!curDay) return null;
-    curSec = { title, exercises: [] };
-    curDay.sections.push(curSec);
-    headerMap = null;
-    return curSec;
-  };
-
-  const makeHeaderMap = (row) => {
-    const map = {};
-    row.forEach((cell, idx) => {
-      const t = normalizeText(cell).toLowerCase();
-      if (!t) return;
-      if (/^ejercicio$/.test(t)) map.name = idx;
-      else if (/video/.test(t)) map.video = idx;
-      else if (/series|reps|repes/.test(t)) map.reps = idx;
-      else if (/descanso/.test(t)) map.rest = idx;
-      else if (/rpe|rir/.test(t)) map.rpe = idx;
-      else if (/peso/.test(t)) map.weight = idx;
-      else if (/observ/.test(t)) {
-        if (map.obs === undefined) map.obs = idx;
-      }
-    });
-    return map.name !== undefined ? map : null;
-  };
-
-  const getByMap = (row, field, fallbackIdx) => {
-    const idx = headerMap && headerMap[field] !== undefined ? headerMap[field] : fallbackIdx;
-    return normalizeText(row[idx]);
-  };
-
-  rows.forEach(rowRaw => {
-    const row = (rowRaw || []).map(v => normalizeText(v));
-    const c0  = row[0] || '';
-    const c0l = c0.toLowerCase();
-    const joinedLower = row.join(' ').toLowerCase();
-
-    if (!row.some(Boolean)) return;
-
-    // Día
-    const dayMatch = c0.match(/^D[IÍ]A\s*(\d+)/i);
-    if (dayMatch) {
-      curDay = { label: `DÍA ${dayMatch[1]}`, focus: '', sections: [] };
-      days.push(curDay);
-      curSec = null;
-      headerMap = null;
-      return;
-    }
-
-    // Entrenamiento en casa tiene una sola pestaña sin DIA explícito
-    if (!curDay && /entrenamiento en casa/i.test(c0)) {
-      curDay = { label: 'CASA', focus: 'Entrenamiento en casa', sections: [] };
-      days.push(curDay);
-      curSec = null;
-      headerMap = null;
-      return;
-    }
-
-    if (!curDay) return;
-
-    // Secciones
-    if (/entrada.{0,15}calor/i.test(c0)) {
-      newSection('Entrada en Calor');
-      return;
-    }
-
-    if (/zona\s*media/i.test(c0)) {
-      newSection('Zona Media');
-      // Puede venir como fila encabezado también: "Zona media | Video | Series..."
-      const possibleHeader = makeHeaderMap(['Ejercicio', ...row.slice(1)]);
-      headerMap = makeHeaderMap(row) || possibleHeader || headerMap;
-      return;
-    }
-
-    if (/entrenamiento/i.test(c0)) {
-      let focus = '';
-      const par = c0.match(/\((.*?)\)/);
-      if (par) focus = par[1].trim();
-      else focus = c0.replace(/entrenamiento/ig, '').replace(/[():-]/g, ' ').trim();
-      newSection('Entrenamiento' + (focus ? ' — ' + focus : ''));
-      if (focus) curDay.focus = focus;
-      return;
-    }
-
-    // Encabezados
-    const hm = makeHeaderMap(row);
-    if (hm) {
-      headerMap = hm;
-      if (!curSec) newSection('Entrada en Calor');
-      return;
-    }
-
-    // Evitar filas basura o textos sueltos
-    if (/^video explicativo$/i.test(c0) || /^series/i.test(c0) || /^descanso/i.test(c0) || /^peso$/i.test(c0)) return;
-    if (/^https?:\/\//i.test(c0)) return;
-
-    // Si hay ejercicio antes de sección explícita, lo tomamos como Entrada en Calor
-    if (!curSec) newSection('Entrada en Calor');
-
-    const name = getByMap(row, 'name', 0);
-    if (!name) return;
-
-    const video = getByMap(row, 'video', 1);
-    const reps  = getByMap(row, 'reps', 2);
-    const rest  = getByMap(row, 'rest', 3);
-    const rpe   = getByMap(row, 'rpe', 4);
-    const weight= getByMap(row, 'weight', 5);
-    const obs   = getByMap(row, 'obs', 6);
-
-    // Filtro anti-encabezados mezclados
-    if (/ejercicio|video explicativo|series y reps|descanso|rpe|observaciones/i.test(name)) return;
-
-    curSec.exercises.push({
-      name,
-      video: /^https?:\/\//i.test(video) ? video : '',
-      reps,
-      rest,
-      rpe,
-      weight,
-      obs,
-      rowIdx: null
-    });
-  });
-
-  // Completar 3 días para mantener UI fija
-  while (days.length < 3) {
-    days.push({ label:`DÍA ${days.length + 1}`, focus:'', sections:[] });
-  }
-
-  days.forEach(d => {
-    if (!d.focus) {
-      const s = d.sections.find(s => /entrenamiento/i.test(s.title));
-      if (s) d.focus = s.title.replace(/entrenamiento\s*[—-]?\s*/i,'').trim();
-    }
-  });
-
-  return { days };
-}
-
-// ══════════════════════════════════════════
-//  BUILT-IN FALLBACK
-// ══════════════════════════════════════════
-function loadBuiltIn() {
-  allWeeks  = {'Semana 1': builtInData()};
-  weekNames = ['Semana 1'];
-  activeWeek = 0; activeDay = 0; openVideos = {};
-  renderWeekTabs(); renderDayTabs(); renderAll(); updateWeekBadge();
-}
-
-function builtInData() {
-  return {days:[
-    {label:'DÍA 1',focus:'Demo',sections:[
-      {title:'Entrada en Calor',exercises:[
-        {name:'Mov. articular Cadera',reps:'2x10',video:'https://www.youtube.com/shorts/eu7CXsemhPk'}
-      ]},
-      {title:'Entrenamiento',exercises:[
-        {name:'Ejemplo de ejercicio',reps:'3x10',rest:"2'",rpe:'2',weight:'40kg',video:''}
-      ]}
-    ]},
-    {label:'DÍA 2',focus:'',sections:[]},
-    {label:'DÍA 3',focus:'',sections:[]}
-  ]};
-}
-
-// ══════════════════════════════════════════
 //  RENDER
 // ══════════════════════════════════════════
-function getVid(url){
-  if(!url) return null;
-  const m=url.match(/(?:shorts\/|v=|youtu\.be\/)([A-Za-z0-9_-]{11})/);
-  return m?m[1]:null;
-}
-function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
-
 function renderWeekTabs() {
   document.getElementById('weekTabs').innerHTML = weekNames.map((n,i) =>
     `<button class="wtab${i===activeWeek?' active':''}" onclick="switchWeek(${i})">${esc(n)}</button>`
@@ -657,16 +604,16 @@ function renderWeekTabs() {
 
 function scrollWeekTabToActive() {
   const wrap = document.getElementById('weekTabs');
-  const active = wrap.querySelector('.wtab.active');
+  const active = wrap ? wrap.querySelector('.wtab.active') : null;
   if (active) active.scrollIntoView({behavior:'smooth', block:'nearest', inline:'center'});
 }
 
 function renderDayTabs() {
   const data = allWeeks[weekNames[activeWeek]];
   if (!data) return;
-  document.getElementById('dayTabs').innerHTML = data.days.map((d,i) =>
+  document.getElementById('dayTabs').innerHTML = data.days.slice(0,3).map((d,i) =>
     `<button class="dtab${i===activeDay?' active':''}" onclick="switchDay(${i})">
-      ${esc(d.label)}<span class="dtab-sub">${esc(d.focus||'–')}</span>
+      ${esc(d.label)}<span class="dtab-sub">${esc(d.focus || '–')}</span>
     </button>`
   ).join('');
 }
@@ -674,26 +621,31 @@ function renderDayTabs() {
 function renderAll() {
   const data = allWeeks[weekNames[activeWeek]];
   if (!data) return;
-  data.days.forEach((day,di) => {
+
+  for (let di=0; di<3; di++) {
     const panel = document.getElementById(`panel${di}`);
-    if (!panel) return;
-    const hasEx = day.sections.some(s=>s.exercises.length>0);
+    const day = data.days[di] || {label:`DÍA ${di+1}`, focus:'', sections:[]};
+    if (!panel) continue;
+
+    const hasEx = day.sections.some(s => s.exercises.length > 0);
     if (!hasEx) {
-      panel.innerHTML=`<div class="empty-state"><div class="icon">🏋️</div><p>Sin ejercicios para este día.</p></div>`;
-      return;
+      panel.innerHTML = `<div class="empty-state"><div class="icon">🏋️</div><p>Sin ejercicios para este día.<br>Si debería tener datos, tocá ↻ Cargar o revisá el Sheet.</p></div>`;
+      continue;
     }
-    let html='', ei=0;
+
+    let html = '', ei = 0;
     day.sections.forEach(sec => {
       html += `<div class="section-title">${esc(sec.title)}</div>`;
       sec.exercises.forEach(ex => {
-        const k=eKey(di,ei), ck=cKey(di,ei);
-        const done=!!completed[ck];
-        const edit=userEdits[k]||{};
-        const wt  = edit.weight!==undefined ? edit.weight : (ex.weight||'');
-        const ob  = edit.obs!==undefined    ? edit.obs    : (ex.obs||'');
+        const k = eKey(di,ei), ck = cKey(di,ei);
+        const done = !!completed[ck];
+        const edit = userEdits[k] || {};
+        const wt = edit.weight !== undefined ? edit.weight : (ex.weight || '');
+        const ob = edit.obs !== undefined ? edit.obs : (ex.obs || '');
         const vid = getVid(ex.video);
-        const vk  = `${di}_${ei}`;
+        const vk = `${di}_${ei}`;
         const vOpen = !!openVideos[vk];
+
         html += `
 <div class="exercise-card${done?' completed':''}" id="card_${esc(k)}">
   <div class="card-top">
@@ -702,10 +654,10 @@ function renderAll() {
       <div class="check-circle" onclick="toggleDone('${esc(ck)}','${esc(k)}')">${done?'✓':'○'}</div>
     </div>
     <div class="meta-row">
-      ${ex.reps?`<span class="badge reps">🔁 ${esc(ex.reps)}</span>`:''}
-      ${ex.rest?`<span class="badge rest">⏱ ${esc(ex.rest)}</span>`:''}
-      ${ex.rpe ?`<span class="badge rpe">RPE ${esc(ex.rpe)}</span>`:''}
-      ${wt ?`<span class="badge wt">🏋️ ${esc(wt)}</span>`:''}
+      ${ex.reps ? `<span class="badge reps">🔁 ${esc(ex.reps)}</span>` : ''}
+      ${ex.rest ? `<span class="badge rest">⏱ ${esc(ex.rest)}</span>` : ''}
+      ${ex.rpe  ? `<span class="badge rpe">RPE ${esc(ex.rpe)}</span>` : ''}
+      ${wt      ? `<span class="badge wt">🏋️ ${esc(wt)}</span>` : ''}
     </div>
     <div class="edit-row">
       <div class="edit-group">
@@ -720,21 +672,21 @@ function renderAll() {
       </div>
     </div>
   </div>
-  ${vid?`
+  ${vid ? `
   <button class="btn-video-row${vOpen?' vopen':''}" id="vbtn_${esc(vk)}" onclick="toggleVideo('${esc(vk)}','${vid}')">
     <span>▶</span><span>Ver video del ejercicio</span>
     <span class="vtoggle-arrow">${vOpen?'▲':'▼'}</span>
   </button>
   <div class="video-wrap${vOpen?' vopen':''}" id="vwrap_${esc(vk)}">
-    ${vOpen?`<iframe src="https://www.youtube.com/embed/${vid}?autoplay=0" allowfullscreen loading="lazy"></iframe>`:''}
-  </div>`:''}
+    ${vOpen ? `<iframe src="https://www.youtube.com/embed/${vid}?autoplay=0" allowfullscreen loading="lazy"></iframe>` : ''}
+  </div>` : ''}
 </div>`;
         ei++;
       });
     });
     html += `<button class="reset-btn" onclick="resetDay(${di})">↺ Reiniciar día ${di+1}</button>`;
     panel.innerHTML = html;
-  });
+  }
   updateProgress();
 }
 
@@ -742,99 +694,98 @@ function renderAll() {
 //  INTERACTIONS
 // ══════════════════════════════════════════
 function switchWeek(i) {
-  activeWeek=i; activeDay=0; openVideos={};
-  renderWeekTabs(); renderDayTabs(); renderAll(); updateWeekBadge();
-  scrollWeekTabToActive();
-  document.querySelectorAll('.day-panel').forEach((p,j)=>p.classList.toggle('active',j===0));
+  activeWeek = i; activeDay = 0; openVideos = {};
+  renderWeekTabs(); renderDayTabs(); renderAll(); updateWeekBadge(); scrollWeekTabToActive(); switchDay(0);
 }
 
 function switchDay(i) {
-  activeDay=i;
-  document.querySelectorAll('.day-panel').forEach((p,j)=>p.classList.toggle('active',j===i));
-  document.querySelectorAll('.dtab').forEach((t,j)=>t.classList.toggle('active',j===i));
+  activeDay = i;
+  document.querySelectorAll('.day-panel').forEach((p,j) => p.classList.toggle('active', j === i));
+  document.querySelectorAll('.dtab').forEach((t,j) => t.classList.toggle('active', j === i));
   updateProgress();
 }
 
 function toggleDone(ck,k) {
-  completed[ck]=!completed[ck];
-  localStorage.setItem('gt_completed',JSON.stringify(completed));
-  const card=document.getElementById('card_'+k);
-  if(!card) return;
-  card.classList.toggle('completed',completed[ck]);
-  card.querySelector('.check-circle').textContent=completed[ck]?'✓':'○';
+  completed[ck] = !completed[ck];
+  localStorage.setItem('gt_completed', JSON.stringify(completed));
+  const card = document.getElementById('card_' + k);
+  if (!card) return;
+  card.classList.toggle('completed', completed[ck]);
+  card.querySelector('.check-circle').textContent = completed[ck] ? '✓' : '○';
   updateProgress();
 }
 
 function saveEdit(k,field,val) {
-  if(!userEdits[k]) userEdits[k]={};
-  userEdits[k][field]=val;
-  localStorage.setItem('gt_edits',JSON.stringify(userEdits));
+  if(!userEdits[k]) userEdits[k] = {};
+  userEdits[k][field] = val;
+  localStorage.setItem('gt_edits', JSON.stringify(userEdits));
 }
 
 function resetDay(di) {
   if(!confirm('¿Reiniciar progreso de este día?')) return;
-  const data=allWeeks[weekNames[activeWeek]];
-  let ei=0;
-  data.days[di].sections.forEach(s=>s.exercises.forEach(()=>{delete completed[cKey(di,ei)];ei++;}));
-  localStorage.setItem('gt_completed',JSON.stringify(completed));
-  renderAll();
+  const data = allWeeks[weekNames[activeWeek]];
+  let ei = 0;
+  (data.days[di]?.sections || []).forEach(s => s.exercises.forEach(() => { delete completed[cKey(di,ei)]; ei++; }));
+  localStorage.setItem('gt_completed', JSON.stringify(completed));
+  renderAll(); switchDay(di);
 }
 
 function toggleVideo(vk,vid) {
-  openVideos[vk]=!openVideos[vk];
-  const wrap=document.getElementById('vwrap_'+vk);
-  const btn =document.getElementById('vbtn_'+vk);
-  if(!wrap||!btn) return;
+  openVideos[vk] = !openVideos[vk];
+  const wrap = document.getElementById('vwrap_' + vk);
+  const btn  = document.getElementById('vbtn_' + vk);
+  if(!wrap || !btn) return;
   if(openVideos[vk]) {
-    wrap.innerHTML=`<iframe src="https://www.youtube.com/embed/${vid}?autoplay=0" allowfullscreen loading="lazy"></iframe>`;
+    wrap.innerHTML = `<iframe src="https://www.youtube.com/embed/${vid}?autoplay=0" allowfullscreen loading="lazy"></iframe>`;
     wrap.classList.add('vopen'); btn.classList.add('vopen');
-    btn.querySelector('.vtoggle-arrow').textContent='▲';
-    setTimeout(()=>wrap.scrollIntoView({behavior:'smooth',block:'nearest'}),120);
+    btn.querySelector('.vtoggle-arrow').textContent = '▲';
+    setTimeout(() => wrap.scrollIntoView({behavior:'smooth',block:'nearest'}), 120);
   } else {
-    wrap.innerHTML='';
+    wrap.innerHTML = '';
     wrap.classList.remove('vopen'); btn.classList.remove('vopen');
-    btn.querySelector('.vtoggle-arrow').textContent='▼';
+    btn.querySelector('.vtoggle-arrow').textContent = '▼';
   }
 }
 
 function updateProgress() {
-  const data=allWeeks[weekNames[activeWeek]];
-  if(!data) return;
-  const day=data.days[activeDay];
+  const data = allWeeks[weekNames[activeWeek]];
+  const day = data?.days?.[activeDay];
   if(!day) return;
-  let total=0,done=0,ei=0;
-  day.sections.forEach(s=>s.exercises.forEach(()=>{
+  let total = 0, done = 0, ei = 0;
+  day.sections.forEach(s => s.exercises.forEach(() => {
     total++;
     if(completed[cKey(activeDay,ei)]) done++;
     ei++;
   }));
-  document.getElementById('progressText').textContent=`${done} / ${total}`;
-  document.getElementById('progressFill').style.width=total?`${done/total*100}%`:'0%';
+  document.getElementById('progressText').textContent = `${done} / ${total}`;
+  document.getElementById('progressFill').style.width = total ? `${done/total*100}%` : '0%';
 }
 
 // ══════════════════════════════════════════
-//  UI HELPERS
+//  UI
 // ══════════════════════════════════════════
 function setBtnLoading(on) {
-  document.getElementById('btnLoad').disabled=on;
-  document.getElementById('btnLoadTxt').innerHTML=on?'<span class="spinner"></span>':'↻ Cargar';
+  document.getElementById('btnLoad').disabled = on;
+  document.getElementById('btnLoadTxt').innerHTML = on ? '<span class="spinner"></span>' : '↻ Cargar';
 }
 function setSyncMsg(msg,type) {
-  const el=document.getElementById('syncMsg');
-  el.textContent=msg; el.className='sync-msg'+(type?' '+type:'');
+  const el = document.getElementById('syncMsg');
+  el.textContent = msg;
+  el.className = 'sync-msg' + (type ? ' ' + type : '');
 }
 function showLoading(txt) {
-  document.getElementById('loadingText').textContent=txt;
+  document.getElementById('loadingText').textContent = txt;
   document.getElementById('loadingOverlay').classList.add('show');
 }
-function hideLoading(){document.getElementById('loadingOverlay').classList.remove('show')}
+function hideLoading() { document.getElementById('loadingOverlay').classList.remove('show'); }
 function showToast(msg,isErr=false) {
-  const t=document.getElementById('toast');
-  t.textContent=msg; t.className='toast'+(isErr?' err':'')+' show';
-  setTimeout(()=>t.classList.remove('show'),3200);
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (isErr ? ' err' : '') + ' show';
+  setTimeout(() => t.classList.remove('show'), 3200);
 }
 function updateWeekBadge(){
-  document.getElementById('weekBadge').textContent=weekNames[activeWeek]||'–';
+  document.getElementById('weekBadge').textContent = weekNames[activeWeek] || '–';
 }
 
 // ══════════════════════════════════════════
