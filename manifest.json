@@ -1,12 +1,12 @@
 {
   "name": "Mi Rutina — Gustavo",
   "short_name": "Mi Rutina",
-  "description": "Plan de entrenamiento personal",
+  "description": "App de entrenamiento personal con carga desde Google Sheets",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "background_color": "#0d0f14",
-  "theme_color": "#f5a623",
+  "theme_color": "#f97316",
   "orientation": "portrait-primary",
   "icons": [
     { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
