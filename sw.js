@@ -1,4 +1,4 @@
-const CACHE = 'rutina-v8-json';
+const CACHE = 'rutina-v20260506-vertical-sheets';
 const ASSETS = ['/', '/index.html', '/manifest.json', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', e => {

@@ -9,205 +9,212 @@
 <meta name="apple-mobile-web-app-title" content="Mi Rutina">
 <meta name="theme-color" content="#f5a623">
 <title>Mi Rutina — Gustavo</title>
-<link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg:#0d0f14; --surface:#161a22; --card:#1e2330;
-  --accent:#f5a623; --accent2:#e8623a; --green:#2ecc71;
-  --text:#e8ecf4; --muted:#6b7590; --border:#2a3045;
-  --red:#c0392b;
+  --bg: #0d0f14; --surface: #161a22; --card: #1e2330;
+  --accent: #f5a623; --accent2: #e8623a; --green: #2ecc71;
+  --text: #e8ecf4; --muted: #6b7590; --border: #2a3045;
 }
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html{scroll-behavior:smooth}
-body{
-  font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);
-  min-height:100vh;padding-bottom:40px;
-  padding-top:env(safe-area-inset-top,0px);
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body {
+  font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text);
+  min-height: 100vh; padding-bottom: 40px;
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
-/* ── HEADER ── */
-.header{
-  background:linear-gradient(160deg,#131824,#0d0f14);
-  padding:22px 20px 14px;text-align:center;border-bottom:1px solid var(--border);
-  position:relative;
+/* HEADER */
+.header {
+  background: linear-gradient(160deg,#131824,#0d0f14);
+  padding: 22px 20px 14px; text-align: center; border-bottom: 1px solid var(--border);
 }
-.header-sub{font-size:10px;letter-spacing:4px;text-transform:uppercase;color:var(--accent);margin-bottom:3px}
-.header h1{
-  font-family:'Bebas Neue',sans-serif;font-size:40px;letter-spacing:2px;
-  background:linear-gradient(135deg,var(--accent),var(--accent2));
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+.header-sub { font-size: 10px; letter-spacing: 4px; text-transform: uppercase; color: var(--accent); margin-bottom: 3px; }
+.header h1 {
+  font-family: 'Bebas Neue', sans-serif; font-size: 40px; letter-spacing: 2px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
 }
-.week-badge{
-  display:inline-block;background:var(--card);border:1px solid var(--border);
-  border-radius:20px;padding:3px 12px;font-size:11px;color:var(--muted);margin-top:5px;
-}
-.install-btn-header{
-  position:absolute;right:14px;top:50%;transform:translateY(-50%);
-  background:linear-gradient(135deg,var(--accent),var(--accent2));
-  color:#000;border:none;border-radius:10px;padding:7px 12px;
-  font-weight:700;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;
-  display:none;align-items:center;gap:5px;
-}
-.install-btn-header.show{display:flex}
-
-/* ── CONFIG ── */
-.config-section{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 14px}
-.config-row{display:flex;gap:8px;align-items:center}
-.config-input{
-  flex:1;background:var(--card);border:1px solid var(--border);
-  border-radius:8px;padding:8px 10px;font-size:11px;
-  color:var(--text);font-family:'DM Sans',sans-serif;outline:none;min-width:0;
-}
-.config-input:focus{border-color:var(--accent)}
-.config-input::placeholder{color:var(--muted)}
-.btn-load{
-  background:linear-gradient(135deg,var(--accent),var(--accent2));
-  color:#000;border:none;border-radius:8px;padding:8px 14px;
-  font-weight:700;font-size:12px;cursor:pointer;white-space:nowrap;
-  font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:5px;
-}
-.btn-load:disabled{opacity:.4;cursor:not-allowed}
-.sync-msg{font-size:11px;text-align:center;padding:5px 0 2px;min-height:20px}
-.sync-msg.ok{color:var(--green)}.sync-msg.err{color:#e74c3c}.sync-msg.info{color:var(--muted)}
-
-/* ── WEEK TABS ── */
-.week-tabs-wrap{
-  background:var(--surface);border-bottom:1px solid var(--border);
-  padding:8px 14px;overflow-x:auto;display:flex;gap:6px;scrollbar-width:none;
-}
-.week-tabs-wrap::-webkit-scrollbar{display:none}
-.wtab{
-  flex-shrink:0;padding:6px 14px;border-radius:20px;
-  border:1px solid var(--border);background:var(--card);
-  color:var(--muted);font-size:12px;font-weight:600;
-  cursor:pointer;transition:all .2s;white-space:nowrap;
-}
-.wtab.active{border-color:var(--accent);color:var(--accent);background:var(--surface)}
-
-/* ── DAY TABS ── */
-.day-tabs{
-  display:flex;background:var(--surface);padding:8px 12px;gap:8px;
-  position:sticky;top:0;z-index:100;border-bottom:1px solid var(--border);
-}
-.dtab{
-  flex:1;padding:9px 4px;border-radius:10px;border:1px solid var(--border);
-  background:var(--card);color:var(--muted);font-family:'Bebas Neue',sans-serif;
-  font-size:17px;letter-spacing:1px;cursor:pointer;text-align:center;transition:all .2s;
-}
-.dtab.active{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#000;border-color:transparent}
-.dtab-sub{
-  font-family:'DM Sans',sans-serif;font-size:8px;font-weight:500;
-  letter-spacing:.5px;text-transform:uppercase;display:block;margin-top:1px;opacity:.8;
+.week-badge {
+  display: inline-block; background: var(--card); border: 1px solid var(--border);
+  border-radius: 20px; padding: 3px 12px; font-size: 11px; color: var(--muted); margin-top: 5px;
 }
 
-/* ── PROGRESS ── */
-.progress-area{padding:8px 14px 0}
-.progress-label{font-size:11px;color:var(--muted);margin-bottom:4px;display:flex;justify-content:space-between}
-.progress-bar{height:3px;background:var(--border);border-radius:4px;overflow:hidden}
-.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--green));border-radius:4px;transition:width .4s ease}
-
-/* ── CONTENT ── */
-.day-panel{display:none;padding:12px 14px}
-.day-panel.active{display:block}
-.section-title{
-  font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:3px;
-  color:var(--accent);text-transform:uppercase;margin:16px 0 8px;
-  display:flex;align-items:center;gap:10px;
+/* CONFIG / SYNC */
+.config-section { background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 14px; }
+.config-row { display: flex; gap: 8px; align-items: center; }
+.config-input {
+  flex: 1; background: var(--card); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 10px; font-size: 11px;
+  color: var(--text); font-family: 'DM Sans', sans-serif; outline: none; min-width: 0;
 }
-.section-title::after{content:'';flex:1;height:1px;background:var(--border)}
-.section-title:first-child{margin-top:2px}
-
-/* ── EXERCISE CARD ── */
-.exercise-card{
-  background:var(--card);border:1px solid var(--border);
-  border-radius:14px;margin-bottom:8px;overflow:hidden;transition:border-color .2s;
+.config-input:focus { border-color: var(--accent); }
+.config-input::placeholder { color: var(--muted); }
+.btn-load {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  color: #000; border: none; border-radius: 8px; padding: 8px 14px;
+  font-weight: 700; font-size: 12px; cursor: pointer; white-space: nowrap;
+  font-family: 'DM Sans', sans-serif; display: flex; align-items: center; gap: 5px;
 }
-.exercise-card.completed{border-color:var(--green);background:#171f17}
-.card-top{padding:12px 12px 10px}
-.card-header{display:flex;align-items:flex-start;gap:8px;margin-bottom:7px}
-.exercise-name{font-weight:600;font-size:14px;line-height:1.3;flex:1}
-.check-circle{
-  width:26px;height:26px;border-radius:50%;border:2px solid var(--border);
-  display:flex;align-items:center;justify-content:center;
-  color:var(--muted);font-size:13px;cursor:pointer;flex-shrink:0;
-  transition:all .2s;background:var(--surface);user-select:none;
-}
-.exercise-card.completed .check-circle{background:var(--green);border-color:var(--green);color:#000;font-weight:700}
+.btn-load:disabled { opacity: .4; cursor: not-allowed; }
+.sync-msg { font-size: 11px; text-align: center; padding: 5px 0 2px; min-height: 20px; }
+.sync-msg.ok { color: var(--green); }
+.sync-msg.err { color: #e74c3c; }
+.sync-msg.info { color: var(--muted); }
 
-.meta-row{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px}
-.badge{
-  display:inline-flex;align-items:center;gap:3px;
-  background:var(--surface);border:1px solid var(--border);
-  border-radius:6px;padding:2px 7px;font-size:11px;
+/* SAVE BAR */
+.save-bar {
+  display: none; background: #172217; border: 1px solid #2ecc7155;
+  border-radius: 10px; margin: 6px 0 2px; padding: 9px 12px;
+  align-items: center; justify-content: space-between; gap: 10px;
 }
-.badge.reps{border-color:#3498db44;color:#5dade2}
-.badge.rest{border-color:#9b59b644;color:#a569bd}
-.badge.rpe{border-color:#e74c3c44;color:#e74c3c}
-.badge.wt{border-color:#f5a62344;color:var(--accent);font-weight:600}
-
-/* Editable fields */
-.edit-row{display:flex;gap:6px;margin-top:6px}
-.edit-group{flex:1;min-width:0}
-.edit-label{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:3px}
-.edit-input{
-  width:100%;background:var(--surface);border:1px solid var(--border);
-  border-radius:7px;padding:6px 8px;font-size:12px;color:var(--text);
-  font-family:'DM Sans',sans-serif;outline:none;transition:border-color .2s;
+.save-bar.visible { display: flex; }
+.save-bar-text { font-size: 11px; color: var(--green); }
+.btn-save {
+  background: var(--green); color: #000; border: none; border-radius: 8px;
+  padding: 6px 12px; font-weight: 700; font-size: 11px; cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
 }
-.edit-input:focus{border-color:var(--accent)}
-.edit-input.obs{font-style:italic}
+.btn-save:disabled { opacity: .5; }
 
-/* Video */
-.btn-video-row{
-  width:100%;background:#180c0c;border:none;border-top:1px solid var(--border);
-  color:#e74c3c;padding:9px 12px;font-size:12px;font-weight:600;
-  cursor:pointer;font-family:'DM Sans',sans-serif;
-  display:flex;align-items:center;gap:7px;transition:background .2s;
+/* WEEK TABS */
+.week-tabs-wrap {
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  padding: 8px 14px; overflow-x: auto; display: flex; gap: 6px;
+  scrollbar-width: none;
 }
-.btn-video-row:hover,.btn-video-row.vopen{background:#220f0f}
-.vtoggle-arrow{margin-left:auto;font-size:10px;transition:transform .25s}
-.btn-video-row.vopen .vtoggle-arrow{transform:rotate(180deg)}
-.video-wrap{max-height:0;overflow:hidden;transition:max-height .35s ease;background:#000}
-.video-wrap.vopen{max-height:260px}
-.video-wrap iframe{width:100%;aspect-ratio:16/9;border:none;display:block}
-
-/* Reset */
-.reset-btn{
-  display:block;margin:14px auto 0;background:transparent;
-  border:1px solid var(--border);color:var(--muted);border-radius:8px;
-  padding:6px 16px;font-size:11px;cursor:pointer;
-  font-family:'DM Sans',sans-serif;transition:all .2s;
+.week-tabs-wrap::-webkit-scrollbar { display: none; }
+.wtab {
+  flex-shrink: 0; padding: 6px 14px; border-radius: 20px;
+  border: 1px solid var(--border); background: var(--card);
+  color: var(--muted); font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: all .2s; white-space: nowrap;
 }
-.reset-btn:hover{border-color:#e74c3c44;color:#e74c3c}
+.wtab.active { border-color: var(--accent); color: var(--accent); background: var(--surface); }
 
-/* Empty */
-.empty-state{text-align:center;padding:40px 20px;color:var(--muted)}
-.empty-state .icon{font-size:40px;margin-bottom:10px}
-.empty-state p{font-size:13px;line-height:1.6}
-
-/* Toast */
-.toast{
-  position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);
-  background:var(--card);border:1px solid var(--green);border-radius:10px;
-  padding:10px 20px;font-size:13px;font-weight:500;color:var(--green);
-  z-index:9999;transition:transform .3s ease;white-space:nowrap;
-  box-shadow:0 4px 24px #00000066;
+/* DAY TABS */
+.day-tabs {
+  display: flex; background: var(--surface);
+  padding: 8px 12px; gap: 8px;
+  position: sticky; top: 0; z-index: 100; border-bottom: 1px solid var(--border);
 }
-.toast.show{transform:translateX(-50%) translateY(0)}
-.toast.err{border-color:#e74c3c;color:#e74c3c}
-
-/* Loading */
-.loading-overlay{
-  display:none;position:fixed;inset:0;background:#0d0f14ee;
-  z-index:500;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+.dtab {
+  flex: 1; padding: 9px 4px; border-radius: 10px;
+  border: 1px solid var(--border); background: var(--card);
+  color: var(--muted); font-family: 'Bebas Neue', sans-serif;
+  font-size: 17px; letter-spacing: 1px; cursor: pointer; text-align: center; transition: all .2s;
 }
-.loading-overlay.show{display:flex}
-.loading-spin{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
-.loading-text{font-size:13px;color:var(--muted)}
-@keyframes spin{to{transform:rotate(360deg)}}
-.spinner{display:inline-block;width:11px;height:11px;border:2px solid #00000033;border-top-color:#000;border-radius:50%;animation:spin .6s linear infinite}
+.dtab.active { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #000; border-color: transparent; }
+.dtab-sub {
+  font-family: 'DM Sans', sans-serif; font-size: 8px; font-weight: 500;
+  letter-spacing: .5px; text-transform: uppercase; display: block; margin-top: 1px; opacity: .8;
+}
+
+/* PROGRESS */
+.progress-area { padding: 8px 14px 0; }
+.progress-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; display: flex; justify-content: space-between; }
+.progress-bar { height: 3px; background: var(--border); border-radius: 4px; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--green)); border-radius: 4px; transition: width .4s ease; }
+
+/* CONTENT */
+.day-panel { display: none; padding: 12px 14px; }
+.day-panel.active { display: block; }
+
+.section-title {
+  font-family: 'Bebas Neue', sans-serif; font-size: 12px; letter-spacing: 3px;
+  color: var(--accent); text-transform: uppercase; margin: 16px 0 8px;
+  display: flex; align-items: center; gap: 10px;
+}
+.section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.section-title:first-child { margin-top: 2px; }
+
+/* EXERCISE CARD */
+.exercise-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 14px; margin-bottom: 8px; overflow: hidden; transition: border-color .2s;
+}
+.exercise-card.completed { border-color: var(--green); background: #171f17; }
+.card-top { padding: 12px 12px 10px; }
+.card-header { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 7px; }
+.exercise-name { font-weight: 600; font-size: 14px; line-height: 1.3; flex: 1; }
+.check-circle {
+  width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--muted); font-size: 13px; cursor: pointer; flex-shrink: 0;
+  transition: all .2s; background: var(--surface); user-select: none;
+}
+.exercise-card.completed .check-circle { background: var(--green); border-color: var(--green); color: #000; font-weight: 700; }
+
+.meta-row { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 8px; }
+.badge {
+  display: inline-flex; align-items: center; gap: 3px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 6px; padding: 2px 7px; font-size: 11px;
+}
+.badge.reps { border-color: #3498db44; color: #5dade2; }
+.badge.rest { border-color: #9b59b644; color: #a569bd; }
+.badge.rpe  { border-color: #e74c3c44; color: #e74c3c; }
+
+/* EDITABLE FIELDS */
+.edit-row { display: flex; gap: 6px; }
+.edit-group { flex: 1; min-width: 0; }
+.edit-label { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 3px; }
+.edit-input {
+  width: 100%; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 7px; padding: 6px 8px; font-size: 12px; color: var(--text);
+  font-family: 'DM Sans', sans-serif; outline: none; transition: border-color .2s;
+}
+.edit-input:focus { border-color: var(--accent); }
+.edit-input.obs { font-style: italic; }
+
+/* VIDEO TOGGLE */
+.btn-video-row {
+  width: 100%; background: #180c0c; border: none; border-top: 1px solid var(--border);
+  color: #e74c3c; padding: 9px 12px; font-size: 12px; font-weight: 600;
+  cursor: pointer; font-family: 'DM Sans', sans-serif;
+  display: flex; align-items: center; gap: 7px; transition: background .2s;
+}
+.btn-video-row:hover, .btn-video-row.vopen { background: #220f0f; }
+.vtoggle-arrow { margin-left: auto; font-size: 10px; transition: transform .25s; }
+.btn-video-row.vopen .vtoggle-arrow { transform: rotate(180deg); }
+.video-wrap { max-height: 0; overflow: hidden; transition: max-height .35s ease; background: #000; }
+.video-wrap.vopen { max-height: 260px; }
+.video-wrap iframe { width: 100%; aspect-ratio: 16/9; border: none; display: block; }
+
+/* RESET */
+.reset-btn {
+  display: block; margin: 14px auto 0; background: transparent;
+  border: 1px solid var(--border); color: var(--muted); border-radius: 8px;
+  padding: 6px 16px; font-size: 11px; cursor: pointer;
+  font-family: 'DM Sans', sans-serif; transition: all .2s;
+}
+.reset-btn:hover { border-color: #e74c3c44; color: #e74c3c; }
+
+/* EMPTY */
+.empty-state { text-align: center; padding: 40px 20px; color: var(--muted); }
+.empty-state .icon { font-size: 40px; margin-bottom: 10px; }
+.empty-state p { font-size: 13px; line-height: 1.6; }
+
+/* TOAST */
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(100px);
+  background: var(--card); border: 1px solid var(--green); border-radius: 10px;
+  padding: 10px 20px; font-size: 13px; font-weight: 500; color: var(--green);
+  z-index: 9999; transition: transform .3s ease; white-space: nowrap;
+  box-shadow: 0 4px 24px #00000066;
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+.toast.err { border-color: #e74c3c; color: #e74c3c; }
+
+/* LOADING */
+.loading-overlay {
+  display: none; position: fixed; inset: 0; background: #0d0f14dd;
+  z-index: 500; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+}
+.loading-overlay.show { display: flex; }
+.loading-spin { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
+.loading-text { font-size: 13px; color: var(--muted); }
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner { display: inline-block; width: 11px; height: 11px; border: 2px solid #00000033; border-top-color: #000; border-radius: 50%; animation: spin .6s linear infinite; }
 </style>
 </head>
 <body>
@@ -223,20 +230,23 @@ body{
   <div class="header-sub">Plan de entrenamiento</div>
   <h1>MI RUTINA</h1>
   <div class="week-badge" id="weekBadge">–</div>
-  <button class="install-btn-header" id="installBtn">📲 Instalar app</button>
 </div>
 
 <!-- Config -->
 <div class="config-section">
   <div class="config-row">
     <input class="config-input" id="sheetUrl" type="url"
-      placeholder="Link de Google Sheets…"
+      placeholder="Link de Google Sheets (público)…"
       value="https://docs.google.com/spreadsheets/d/1dLY4XouNf4CaoOtxzMFB4ojUO9_XV3pK/edit">
     <button class="btn-load" id="btnLoad" onclick="loadSheet()">
       <span id="btnLoadTxt">↻ Cargar</span>
     </button>
   </div>
   <div class="sync-msg" id="syncMsg"></div>
+  <div class="save-bar" id="saveBar">
+    <span class="save-bar-text">✏️ Tenés cambios sin guardar</span>
+    <button class="btn-save" id="btnSave" onclick="saveToSheet()">💾 Guardar en Sheet</button>
+  </div>
 </div>
 
 <!-- Week tabs -->
@@ -251,11 +261,11 @@ body{
 
 <!-- Progress -->
 <div class="progress-area">
-  <div class="progress-label"><span>Progreso del día</span><span id="progressText">0 / 0</span></div>
+  <div class="progress-label"><span>Progreso</span><span id="progressText">0 / 0</span></div>
   <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
 </div>
 
-<!-- Day panels -->
+<!-- Panels -->
 <div id="panel0" class="day-panel active"></div>
 <div id="panel1" class="day-panel"></div>
 <div id="panel2" class="day-panel"></div>
@@ -264,6 +274,13 @@ body{
 // ══════════════════════════════════════════
 //  STATE
 // ══════════════════════════════════════════
+const APP_VERSION = 'rutina-v20260506-vertical-sheets';
+if (localStorage.getItem('gt_storage_version') !== APP_VERSION) {
+  localStorage.removeItem('gt_edits');
+  localStorage.removeItem('gt_completed');
+  localStorage.setItem('gt_storage_version', APP_VERSION);
+}
+
 let allWeeks   = {};
 let weekNames  = [];
 let activeWeek = 0;
@@ -271,7 +288,9 @@ let activeDay  = 0;
 let openVideos = {};
 let userEdits  = JSON.parse(localStorage.getItem('gt_edits')     || '{}');
 let completed  = JSON.parse(localStorage.getItem('gt_completed') || '{}');
+
 const DEFAULT_SID = '1dLY4XouNf4CaoOtxzMFB4ojUO9_XV3pK';
+const EXTRA_SHEETS = ['Entrenamiento en casa'];
 
 // ── PWA INSTALL ───────────────────────────
 let deferredPrompt = null;
@@ -293,17 +312,17 @@ window.addEventListener('appinstalled', () => {
   showToast('✓ App instalada');
 });
 
-// ── SERVICE WORKER (para instalación PWA) ─
+// ── SERVICE WORKER ────────────────────────
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
   });
 }
 
 // ══════════════════════════════════════════
 //  KEYS
 // ══════════════════════════════════════════
-const wn  = ()       => weekNames[activeWeek] || 'S0';
+const wn   = ()       => weekNames[activeWeek] || 'S0';
 const eKey = (di,ei) => `${wn()}_${di}_${ei}`;
 const cKey = (di,ei) => `${wn()}_${di}_${ei}`;
 
@@ -312,154 +331,112 @@ function getSid(url) {
   return m ? m[1] : DEFAULT_SID;
 }
 
-// ══════════════════════════════════════════
-//  FETCH GOOGLE SHEETS — TODAS LAS SOLAPAS REALES
-//  Regla:
-//  1) Cargar todas las solapas conocidas que existan: Semana 1..30 + extras.
-//  2) Evitar duplicados/solapas falsas comparando el contenido CSV.
-//  3) Al abrir, posicionarse en la última Semana numérica encontrada.
-// ══════════════════════════════════════════
-const MAX_WEEK_TO_SCAN = 30;
-const EXTRA_SHEETS_TO_SCAN = ['Entrenamiento en casa', 'Casa', 'Rutina casa'];
-
-function getGid(url) {
-  const m = (url || '').match(/[?&]gid=(\d+)/);
-  return m ? Number(m[1]) : null;
+function normalizeText(v) {
+  return (v ?? '').toString().replace(/\s+/g, ' ').trim();
 }
 
-function sheetScanList() {
-  const weeks = Array.from({ length: MAX_WEEK_TO_SCAN }, (_, i) => `Semana ${i + 1}`);
-  return [...weeks, ...EXTRA_SHEETS_TO_SCAN];
+function isSheetWithData(parsed) {
+  return parsed && parsed.days && parsed.days.some(d => d.sections.some(s => s.exercises.length > 0));
 }
 
-function csvSignature(csv) {
-  return (csv || '')
-    .replace(/\r/g, '')
-    .split('\n')
-    .map(l => l.trim())
-    .filter(Boolean)
-    .join('\n')
-    .slice(0, 20000);
-}
-
-function hasRealExercises(parsed) {
-  return !!parsed && parsed.days.some(d => d.sections.some(s => s.exercises.length > 0));
-}
-
-function semanaNumber(name) {
+function weekNumber(name) {
   const m = (name || '').match(/^Semana\s+(\d+)$/i);
   return m ? Number(m[1]) : null;
 }
 
-function getLastTrainingWeekIndex(names) {
-  let bestIdx = names.length ? names.length - 1 : 0;
+function chooseInitialWeekIndex(names) {
+  let bestIdx = names.length - 1;
   let bestNum = -1;
-  names.forEach((n, idx) => {
-    const num = semanaNumber(n);
+  names.forEach((n, i) => {
+    const num = weekNumber(n);
     if (num !== null && num > bestNum) {
       bestNum = num;
-      bestIdx = idx;
+      bestIdx = i;
     }
   });
   return bestIdx;
 }
 
-function firstDayWithExercises(data) {
-  if (!data || !data.days) return 0;
-  const idx = data.days.findIndex(d => d.sections.some(s => s.exercises.length > 0));
-  return idx >= 0 ? idx : 0;
-}
-
-async function fetchSheetRows(sid, sheetParam) {
-  let url = `https://docs.google.com/spreadsheets/d/${sid}/gviz/tq?tqx=out:json`;
-  if (sheetParam !== null && sheetParam !== undefined) {
-    if (typeof sheetParam === 'number') url += `&gid=${sheetParam}`;
-    else url += `&sheet=${encodeURIComponent(sheetParam)}`;
-  }
-
+// ══════════════════════════════════════════
+//  FETCH GOOGLE SHEETS AS JSON
+//  Nota: evitamos CSV para no mezclar encabezados/celdas.
+// ══════════════════════════════════════════
+async function fetchSheetRows(sid, sheetName) {
+  const url = `https://docs.google.com/spreadsheets/d/${sid}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}&t=${Date.now()}`;
   const res = await fetch(url, { cache: 'no-store' });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const raw = await res.text();
+  if (!raw || raw.trim().startsWith('<')) throw new Error('sin acceso');
 
-  const text = await res.text();
-  const match = text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\);?$/);
-  if (!match) throw new Error('respuesta inválida del Sheet');
+  const m = raw.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\);?/);
+  if (!m) throw new Error('respuesta inválida');
 
-  const json = JSON.parse(match[1]);
+  const json = JSON.parse(m[1]);
   if (json.status === 'error') throw new Error(json.errors?.[0]?.detailed_message || 'hoja no encontrada');
 
-  const table = json.table;
-  if (!table || !Array.isArray(table.rows)) throw new Error('hoja vacía');
+  const table = json.table || {};
+  const cols = table.cols || [];
+  const rows = table.rows || [];
+  const colCount = Math.max(7, cols.length || 7);
 
-  return table.rows.map(r => {
+  return rows.map(r => {
     const cells = r.c || [];
-    const maxCols = Math.max(cells.length, table.cols?.length || 0, 8);
-    const row = [];
-    for (let i = 0; i < maxCols; i++) {
+    const out = [];
+    for (let i = 0; i < colCount; i++) {
       const cell = cells[i];
-      let value = '';
-      if (cell) value = cell.f ?? cell.v ?? '';
-      row.push(normalizeText(String(value ?? '')));
+      out.push(cell ? (cell.v ?? cell.f ?? '') : '');
     }
-    return row;
+    return out;
   });
-}
-
-function rowsSignature(rows) {
-  return (rows || [])
-    .map(r => r.map(c => normalizeText(c)).filter(Boolean).join('|'))
-    .filter(Boolean)
-    .join('\n')
-    .slice(0, 25000);
 }
 
 async function loadSheet() {
   const rawUrl = document.getElementById('sheetUrl').value.trim();
-  const sid = getSid(rawUrl);
-
+  const sid    = getSid(rawUrl);
   setBtnLoading(true);
-  setSyncMsg('Conectando…', 'info');
-  showLoading('Buscando solapas del Sheet…');
+  setSyncMsg('Conectando con Google Sheets…', 'info');
+  showLoading('Cargando solapas reales…');
 
   try {
-    allWeeks = {}; weekNames = [];
-    const seen = new Set();
+    allWeeks = {};
+    weekNames = [];
 
-    for (const sheetName of sheetScanList()) {
+    const candidates = [
+      ...Array.from({length: 30}, (_, i) => `Semana ${i + 1}`),
+      ...EXTRA_SHEETS
+    ];
+
+    for (const sheetName of candidates) {
       try {
         const rows = await fetchSheetRows(sid, sheetName);
-        const sig = rowsSignature(rows);
-        if (!sig || seen.has(sig)) continue;
-
-        const parsed = parseRows(rows);
-        if (!hasRealExercises(parsed)) continue;
-
-        seen.add(sig);
-        allWeeks[sheetName] = parsed;
-        weekNames.push(sheetName);
-      } catch (e) {
-        // No existe o no es accesible. Se ignora para no crear solapas falsas.
+        const parsed = parseRows(rows, sheetName);
+        if (isSheetWithData(parsed)) {
+          allWeeks[sheetName] = parsed;
+          weekNames.push(sheetName);
+        }
+      } catch(e) {
+        // Ignoramos hojas inexistentes. Solo se cargan solapas reales con datos.
       }
     }
 
-    if (weekNames.length === 0) {
-      const gid = getGid(rawUrl);
-      const rows = await fetchSheetRows(sid, gid !== null ? gid : null);
-      const parsed = parseRows(rows);
-      if (hasRealExercises(parsed)) {
-        const label = gid !== null ? 'Hoja del link' : 'Semana 1';
-        allWeeks[label] = parsed;
-        weekNames.push(label);
-      }
-    }
+    // Orden: Semanas numéricas ascendente y extras al final.
+    weekNames.sort((a, b) => {
+      const na = weekNumber(a), nb = weekNumber(b);
+      if (na !== null && nb !== null) return na - nb;
+      if (na !== null) return -1;
+      if (nb !== null) return 1;
+      return a.localeCompare(b, 'es');
+    });
 
     if (weekNames.length === 0) {
-      throw new Error('No se encontraron rutinas reales. Revisá nombres de solapas y permisos del Sheet.');
+      throw new Error('No se encontraron solapas válidas. Verificá permisos públicos y nombres tipo "Semana 1", "Semana 2"...');
     }
 
     localStorage.setItem('gt_sheetUrl', rawUrl);
 
-    activeWeek = getLastTrainingWeekIndex(weekNames);
-    activeDay = firstDayWithExercises(allWeeks[weekNames[activeWeek]]);
+    // Siempre abrir en la última semana numérica real. Si no hay semanas numéricas, abre la última solapa cargada.
+    activeWeek = chooseInitialWeekIndex(weekNames);
+    activeDay  = 0;
     openVideos = {};
 
     renderWeekTabs();
@@ -481,254 +458,160 @@ async function loadSheet() {
 }
 
 // ══════════════════════════════════════════
-//  PARSE CSV ROBUSTO
-//  Lee filas aunque Google/Excel deje espacios, celdas vacías o encabezados mezclados.
+//  PARSE VERTICAL SHEET A:G
+//  Estructura esperada:
+//  DIA 1
+//  ENTRADA EN CALOR
+//  Ejercicio | Video | Series | Descanso | RPE | Peso | Observaciones
+//  ...
+//  Zona media
+//  ...
+//  ENTRENAMIENTO (...)
+//  ...
 // ══════════════════════════════════════════
-function normalizeText(s) {
-  return (s || '')
-    .toString()
-    .trim()
-    .replace(/\s+/g, ' ')
-    .replace(/[’`]/g, "'");
-}
+function parseRows(rows, sheetName='') {
+  const days = [];
+  let curDay = null;
+  let curSec = null;
+  let headerMap = null;
 
-function isUrl(s) { return /^https?:\/\//i.test(normalizeText(s)); }
-function firstUrlIndex(row) { return row.findIndex(isUrl); }
-function rowText(row) { return row.map(normalizeText).filter(Boolean).join(' '); }
-
-function isHeaderRow(t) {
-  return /ejercicio\s+video/i.test(t)
-    || /^ejercicio$/i.test(t)
-    || /series\s*y\s*reps/i.test(t)
-    || /video\s+explicativo/i.test(t);
-}
-
-function cleanSectionFocus(t) {
-  return normalizeText(t)
-    .replace(/entrenamiento/i, '')
-    .replace(/[():]/g, '')
-    .replace(/[-–—]\s*$/g, '')
-    .trim();
-}
-
-function getExerciseName(row, urlIdx) {
-  // Preferimos el primer texto antes del link.
-  for (let i = 0; i < (urlIdx >= 0 ? urlIdx : row.length); i++) {
-    const v = normalizeText(row[i]);
-    if (v && !isHeaderRow(v) && !/^\d+$/.test(v)) return v;
-  }
-  // Si por algún motivo el nombre quedó después del link.
-  for (let i = 0; i < row.length; i++) {
-    const v = normalizeText(row[i]);
-    if (v && !isUrl(v) && !isHeaderRow(v) && !/^\d+$/.test(v)) return v;
-  }
-  return '';
-}
-
-function getExerciseValues(row, urlIdx) {
-  const values = row.slice(urlIdx + 1).map(normalizeText).filter(Boolean);
-  return {
-    reps: values[0] || '',
-    rest: values[1] || '',
-    rpe: values[2] || '',
-    weight: values[3] || '',
-    obs: values.slice(4).join(' ')
+  const newSection = (title) => {
+    if (!curDay) return null;
+    curSec = { title, exercises: [] };
+    curDay.sections.push(curSec);
+    headerMap = null;
+    return curSec;
   };
-}
 
-function parseRows(rows) {
-  const normalizedRows = rows.map(r => r.map(normalizeText));
-
-  // Detecta formato ancho: DÍA 1 / DÍA 2 / DÍA 3 en columnas distintas.
-  const headerPositions = findDayHeaderPositions(normalizedRows);
-  if (headerPositions.length >= 2) {
-    return parseWideRows(normalizedRows, headerPositions);
-  }
-
-  // Fallback: formato vertical tradicional.
-  return parseVerticalRows(normalizedRows);
-}
-
-function findDayHeaderPositions(rows) {
-  const positions = [];
-  rows.forEach((row, r) => {
-    row.forEach((cell, c) => {
-      const m = normalizeText(cell).match(/^D[IÍ]A\s*(\d+)\b\s*[:\-–—]?\s*(.*)$/i);
-      if (m) {
-        positions.push({ row: r, col: c, num: Number(m[1]), focus: normalizeText(m[2] || '') });
+  const makeHeaderMap = (row) => {
+    const map = {};
+    row.forEach((cell, idx) => {
+      const t = normalizeText(cell).toLowerCase();
+      if (!t) return;
+      if (/^ejercicio$/.test(t)) map.name = idx;
+      else if (/video/.test(t)) map.video = idx;
+      else if (/series|reps|repes/.test(t)) map.reps = idx;
+      else if (/descanso/.test(t)) map.rest = idx;
+      else if (/rpe|rir/.test(t)) map.rpe = idx;
+      else if (/peso/.test(t)) map.weight = idx;
+      else if (/observ/.test(t)) {
+        if (map.obs === undefined) map.obs = idx;
       }
+    });
+    return map.name !== undefined ? map : null;
+  };
+
+  const getByMap = (row, field, fallbackIdx) => {
+    const idx = headerMap && headerMap[field] !== undefined ? headerMap[field] : fallbackIdx;
+    return normalizeText(row[idx]);
+  };
+
+  rows.forEach(rowRaw => {
+    const row = (rowRaw || []).map(v => normalizeText(v));
+    const c0  = row[0] || '';
+    const c0l = c0.toLowerCase();
+    const joinedLower = row.join(' ').toLowerCase();
+
+    if (!row.some(Boolean)) return;
+
+    // Día
+    const dayMatch = c0.match(/^D[IÍ]A\s*(\d+)/i);
+    if (dayMatch) {
+      curDay = { label: `DÍA ${dayMatch[1]}`, focus: '', sections: [] };
+      days.push(curDay);
+      curSec = null;
+      headerMap = null;
+      return;
+    }
+
+    // Entrenamiento en casa tiene una sola pestaña sin DIA explícito
+    if (!curDay && /entrenamiento en casa/i.test(c0)) {
+      curDay = { label: 'CASA', focus: 'Entrenamiento en casa', sections: [] };
+      days.push(curDay);
+      curSec = null;
+      headerMap = null;
+      return;
+    }
+
+    if (!curDay) return;
+
+    // Secciones
+    if (/entrada.{0,15}calor/i.test(c0)) {
+      newSection('Entrada en Calor');
+      return;
+    }
+
+    if (/zona\s*media/i.test(c0)) {
+      newSection('Zona Media');
+      // Puede venir como fila encabezado también: "Zona media | Video | Series..."
+      const possibleHeader = makeHeaderMap(['Ejercicio', ...row.slice(1)]);
+      headerMap = makeHeaderMap(row) || possibleHeader || headerMap;
+      return;
+    }
+
+    if (/entrenamiento/i.test(c0)) {
+      let focus = '';
+      const par = c0.match(/\((.*?)\)/);
+      if (par) focus = par[1].trim();
+      else focus = c0.replace(/entrenamiento/ig, '').replace(/[():-]/g, ' ').trim();
+      newSection('Entrenamiento' + (focus ? ' — ' + focus : ''));
+      if (focus) curDay.focus = focus;
+      return;
+    }
+
+    // Encabezados
+    const hm = makeHeaderMap(row);
+    if (hm) {
+      headerMap = hm;
+      if (!curSec) newSection('Entrada en Calor');
+      return;
+    }
+
+    // Evitar filas basura o textos sueltos
+    if (/^video explicativo$/i.test(c0) || /^series/i.test(c0) || /^descanso/i.test(c0) || /^peso$/i.test(c0)) return;
+    if (/^https?:\/\//i.test(c0)) return;
+
+    // Si hay ejercicio antes de sección explícita, lo tomamos como Entrada en Calor
+    if (!curSec) newSection('Entrada en Calor');
+
+    const name = getByMap(row, 'name', 0);
+    if (!name) return;
+
+    const video = getByMap(row, 'video', 1);
+    const reps  = getByMap(row, 'reps', 2);
+    const rest  = getByMap(row, 'rest', 3);
+    const rpe   = getByMap(row, 'rpe', 4);
+    const weight= getByMap(row, 'weight', 5);
+    const obs   = getByMap(row, 'obs', 6);
+
+    // Filtro anti-encabezados mezclados
+    if (/ejercicio|video explicativo|series y reps|descanso|rpe|observaciones/i.test(name)) return;
+
+    curSec.exercises.push({
+      name,
+      video: /^https?:\/\//i.test(video) ? video : '',
+      reps,
+      rest,
+      rpe,
+      weight,
+      obs,
+      rowIdx: null
     });
   });
 
-  // Nos quedamos con la primera aparición por día.
-  const byNum = new Map();
-  positions.forEach(p => { if (!byNum.has(p.num)) byNum.set(p.num, p); });
-  return Array.from(byNum.values()).sort((a, b) => a.col - b.col || a.num - b.num);
-}
+  // Completar 3 días para mantener UI fija
+  while (days.length < 3) {
+    days.push({ label:`DÍA ${days.length + 1}`, focus:'', sections:[] });
+  }
 
-function parseWideRows(rows, positions) {
-  const days = [];
-  const maxCols = Math.max(...rows.map(r => r.length));
-
-  positions.forEach((pos, idx) => {
-    const next = positions[idx + 1];
-    const startCol = pos.col;
-    const endCol = next ? next.col : maxCols;
-    const block = rows.slice(pos.row + 1).map(r => r.slice(startCol, endCol));
-    const focus = cleanDayFocus(pos.focus);
-    const day = parseDayBlock(block, pos.num, focus);
-    days.push(day);
+  days.forEach(d => {
+    if (!d.focus) {
+      const s = d.sections.find(s => /entrenamiento/i.test(s.title));
+      if (s) d.focus = s.title.replace(/entrenamiento\s*[—-]?\s*/i,'').trim();
+    }
   });
 
-  days.sort((a, b) => Number(a.label.replace(/\D/g, '')) - Number(b.label.replace(/\D/g, '')));
-  while (days.length < 3) days.push({ label: `DÍA ${days.length + 1}`, focus: '', sections: [] });
   return { days };
-}
-
-function cleanDayFocus(focus) {
-  return normalizeText(focus)
-    .replace(/^[:\-–—]+/, '')
-    .replace(/[_]+/g, ' ')
-    .trim();
-}
-
-function parseDayBlock(blockRows, dayNum, focus) {
-  const day = { label: `DÍA ${dayNum}`, focus: focus || '', sections: [] };
-  let curSec = null;
-
-  for (let i = 0; i < blockRows.length; i++) {
-    const row = blockRows[i].map(normalizeText);
-    const t = rowText(row);
-    if (!t) continue;
-
-    // Sección: prioriza columna 0 para evitar juntar encabezados de toda la fila.
-    const first = row[0] || '';
-    const sectionCandidate = first || t;
-
-    if (/entrada\s*en\s*calor/i.test(sectionCandidate)) {
-      curSec = getOrCreateSection(day, 'Entrada en Calor');
-      continue;
-    }
-    if (/zona\s*media/i.test(sectionCandidate)) {
-      curSec = getOrCreateSection(day, 'Zona Media');
-      continue;
-    }
-    if (/entrenamiento/i.test(sectionCandidate)) {
-      const secFocus = cleanSectionFocus(sectionCandidate);
-      curSec = getOrCreateSection(day, 'Entrenamiento' + (secFocus ? ' — ' + secFocus : ''));
-      if (secFocus && !day.focus) day.focus = secFocus;
-      continue;
-    }
-
-    if (isHeaderRow(t)) continue;
-
-    const ex = parseExerciseRow(row, i);
-    if (ex) {
-      if (!curSec) curSec = getOrCreateSection(day, 'Entrenamiento' + (day.focus ? ' — ' + day.focus : ''));
-      curSec.exercises.push(ex);
-    }
-  }
-
-  return day;
-}
-
-function getOrCreateSection(day, title) {
-  let sec = day.sections.find(s => s.title === title);
-  if (!sec) {
-    sec = { title, exercises: [] };
-    day.sections.push(sec);
-  }
-  return sec;
-}
-
-function parseExerciseRow(row, rowIdx) {
-  // Limpia filas totalmente vacías y encabezados repetidos.
-  const filled = row.map(normalizeText);
-  const t = rowText(filled);
-  if (!t || isHeaderRow(t)) return null;
-
-  const urlIdx = firstUrlIndex(filled);
-
-  // Caso más común en tu Excel: Ejercicio | Video | Series | Descanso | RPE/RIR | Peso | Observaciones.
-  let name = normalizeText(filled[0]);
-  if (!name || /^https?:\/\//i.test(name) || isHeaderRow(name)) {
-    name = getExerciseName(filled, urlIdx >= 0 ? urlIdx : filled.length);
-  }
-
-  if (!name || /^D[IÍ]A\s*\d+/i.test(name)) return null;
-  if (/^(video|series|descanso|rpe|rir|peso|observaciones)$/i.test(name)) return null;
-
-  let video = urlIdx >= 0 ? filled[urlIdx] : '';
-  let reps = '', rest = '', rpe = '', weight = '', obs = '';
-
-  if (urlIdx === 1 || (filled[1] && isUrl(filled[1]))) {
-    reps = filled[2] || '';
-    rest = filled[3] || '';
-    rpe = filled[4] || '';
-    weight = filled[5] || '';
-    obs = filled.slice(6).filter(Boolean).join(' ');
-  } else if (urlIdx >= 0) {
-    const vals = getExerciseValues(filled, urlIdx);
-    reps = vals.reps; rest = vals.rest; rpe = vals.rpe; weight = vals.weight; obs = vals.obs;
-  } else {
-    // Sin link, igual permite cargar ejercicios escritos.
-    reps = filled[1] || '';
-    rest = filled[2] || '';
-    rpe = filled[3] || '';
-    weight = filled[4] || '';
-    obs = filled.slice(5).filter(Boolean).join(' ');
-  }
-
-  return { name, video, reps, rest, rpe, weight, obs, rowIdx };
-}
-
-function parseVerticalRows(rows) {
-  const dayMap = {};
-  let curDay = null;
-  let curSec = null;
-
-  for (let i = 0; i < rows.length; i++) {
-    const row = rows[i].map(normalizeText);
-    const first = row[0] || '';
-    const t = rowText(row);
-    if (!t) continue;
-
-    const dayMatch = first.match(/^D[IÍ]A\s*(\d+)\b\s*[:\-–—]?\s*(.*)$/i);
-    if (dayMatch) {
-      const num = Number(dayMatch[1]);
-      const focus = cleanDayFocus(dayMatch[2] || '');
-      if (!dayMap[num]) dayMap[num] = { label: `DÍA ${num}`, focus: focus || '', sections: [] };
-      else if (focus && !dayMap[num].focus) dayMap[num].focus = focus;
-      curDay = dayMap[num];
-      curSec = null;
-      continue;
-    }
-
-    if (!curDay) continue;
-
-    const sectionCandidate = first || t;
-    if (/entrada\s*en\s*calor/i.test(sectionCandidate)) { curSec = getOrCreateSection(curDay, 'Entrada en Calor'); continue; }
-    if (/zona\s*media/i.test(sectionCandidate)) { curSec = getOrCreateSection(curDay, 'Zona Media'); continue; }
-    if (/entrenamiento/i.test(sectionCandidate)) {
-      const focus = cleanSectionFocus(sectionCandidate);
-      curSec = getOrCreateSection(curDay, 'Entrenamiento' + (focus ? ' — ' + focus : ''));
-      if (focus) curDay.focus = focus;
-      continue;
-    }
-
-    if (isHeaderRow(t)) continue;
-
-    const ex = parseExerciseRow(row, i);
-    if (ex) {
-      if (!curSec) curSec = getOrCreateSection(curDay, 'Entrenamiento' + (curDay.focus ? ' — ' + curDay.focus : ''));
-      curSec.exercises.push(ex);
-    }
-  }
-
-  const nums = Object.keys(dayMap).map(Number).sort((a, b) => a - b);
-  const days = nums.map(n => dayMap[n]);
-  while (days.length < 3) days.push({ label: `DÍA ${days.length + 1}`, focus: '', sections: [] });
-  return days.length ? { days } : null;
 }
 
 // ══════════════════════════════════════════
@@ -743,67 +626,16 @@ function loadBuiltIn() {
 
 function builtInData() {
   return {days:[
-    {label:'DÍA 1',focus:'Pecho · Bíceps',sections:[
+    {label:'DÍA 1',focus:'Demo',sections:[
       {title:'Entrada en Calor',exercises:[
-        {name:'Mov. articular Cadera',reps:'2x10',video:'https://www.youtube.com/shorts/eu7CXsemhPk'},
-        {name:'Mov. articular Torso',reps:'2x10',video:'https://www.youtube.com/shorts/oHJdCLxZlZY'},
-        {name:'Mov. articular Hombros',reps:'2x10',video:'https://www.youtube.com/watch?v=ZjuVhZaqjrQ'},
-        {name:'Mov. articular Tobillo/Rodilla',reps:'2x10',video:'https://www.youtube.com/shorts/h1zgwXSA5XY'},
+        {name:'Mov. articular Cadera',reps:'2x10',video:'https://www.youtube.com/shorts/eu7CXsemhPk'}
       ]},
-      {title:'Zona Media',exercises:[
-        {name:'Oblicuos con pesa rusa',reps:'2x12',rest:"20''",video:'https://www.youtube.com/shorts/txi8b0FBixE'},
-        {name:'Lumbares en máquina',reps:'2x20',rest:"20''",video:'https://www.youtube.com/shorts/5zYz96GMfAg'},
-      ]},
-      {title:'Entrenamiento — Pecho · Bíceps',exercises:[
-        {name:'Prensa horizontal',reps:'3x10',rest:"2'",rpe:'2',weight:'40 kg',video:'https://www.youtube.com/shorts/dmC_V7h3Xlg'},
-        {name:'Sillón de cuádriceps',reps:'3x12',rest:"2'",rpe:'3',weight:'40 kg',video:'https://www.youtube.com/shorts/iNvPzf15KKA'},
-        {name:'Press banca con mancuernas',reps:'4x10',rest:"3'",rpe:'3',weight:'16 kg',video:'https://www.youtube.com/shorts/48L0oQApm_0'},
-        {name:'Apertura con mancuernas',reps:'4x12',rest:"2'",rpe:'3',weight:'10 kg',video:'https://www.youtube.com/shorts/_cRGbQxgwn8'},
-        {name:'Curl bíceps alternado c/mancuernas',reps:'4x12',rest:"2'",rpe:'2',weight:'10 kg',video:'https://www.youtube.com/shorts/ygb5M3lc-dc'},
-        {name:'Bíceps martillo c/isometría (4-8-12)',reps:'4x12',rest:"2'",rpe:'3',weight:'8 kg',video:'https://www.youtube.com/shorts/qScJnRNO6wk'},
+      {title:'Entrenamiento',exercises:[
+        {name:'Ejemplo de ejercicio',reps:'3x10',rest:"2'",rpe:'2',weight:'40kg',video:''}
       ]}
     ]},
-    {label:'DÍA 2',focus:'Espalda · Hombros',sections:[
-      {title:'Entrada en Calor',exercises:[
-        {name:'Mov. articular Cadera',reps:'2x10',video:'https://www.youtube.com/shorts/eu7CXsemhPk'},
-        {name:'Mov. articular Torso',reps:'2x10',video:'https://www.youtube.com/shorts/oHJdCLxZlZY'},
-        {name:'Mov. articular Hombros',reps:'2x10',video:'https://www.youtube.com/watch?v=ZjuVhZaqjrQ'},
-        {name:'Mov. articular Tobillo/Rodilla',reps:'2x10',video:'https://www.youtube.com/shorts/h1zgwXSA5XY'},
-      ]},
-      {title:'Zona Media',exercises:[
-        {name:'Puente 3 apoyos',reps:'2x6 vueltas',rest:"20''",video:'https://www.youtube.com/shorts/umPWS5gofGE'},
-        {name:'Puente escalador',reps:'2x20',rest:"20''",video:'https://www.youtube.com/shorts/xJz9XC1K3ss'},
-      ]},
-      {title:'Entrenamiento — Espalda · Hombros',exercises:[
-        {name:'Remo en T',reps:'4x10',rest:"2'",rpe:'3',weight:'20 kg',video:'https://www.youtube.com/shorts/VHNDDUGktrE'},
-        {name:'Jalón al pecho agarre supino',reps:'4x10',rest:"2'",rpe:'3',weight:'35 kg',video:'https://www.youtube.com/shorts/VnLY_duYJKI'},
-        {name:'Press militar cerrado con barra',reps:'4x8',rest:"2'",rpe:'3',weight:'3.5 kg/lado',video:'https://www.youtube.com/shorts/jpi8pC95ubY'},
-        {name:'Vuelos combinados (Lat+Frontales)',reps:'4x10 (5+5)',rest:"2'",rpe:'2',weight:'6 kg',video:'https://www.youtube.com/shorts/WSM-GmG43mo'},
-        {name:'Press francés con mancuernas',reps:'4x12',rest:"2'",rpe:'3',weight:'7 kg',video:'https://www.youtube.com/shorts/FgN0vyx8jNE'},
-        {name:'Fondos en banco o paralelas',reps:'4x12',rest:"2'",rpe:'2',video:'https://www.youtube.com/shorts/wN_9d37DO4M'},
-      ]}
-    ]},
-    {label:'DÍA 3',focus:'Piernas · Bíceps',sections:[
-      {title:'Entrada en Calor',exercises:[
-        {name:'Mov. articular Cadera',reps:'2x10',video:'https://www.youtube.com/shorts/eu7CXsemhPk'},
-        {name:'Mov. articular Torso',reps:'2x10',video:'https://www.youtube.com/shorts/oHJdCLxZlZY'},
-        {name:'Mov. articular Hombros',reps:'2x10',video:'https://www.youtube.com/watch?v=ZjuVhZaqjrQ'},
-        {name:'Mov. articular Tobillo/Rodilla',reps:'2x10',video:'https://www.youtube.com/shorts/h1zgwXSA5XY'},
-      ]},
-      {title:'Zona Media',exercises:[
-        {name:'Rueda abdominal',reps:'2x12',rest:"20''",video:'https://www.youtube.com/shorts/pTOsnzYMiXc'},
-        {name:'Puente lateral',reps:'2x20',rest:"20''",video:'https://www.youtube.com/shorts/fNsxKTKfMNI'},
-      ]},
-      {title:'Entrenamiento — Piernas · Bíceps',exercises:[
-        {name:'Sentadilla libre con barra',reps:'3x8',rest:"3'",rpe:'3',weight:'12.5 kg',obs:'7.5 kg por lado + barra',video:'https://www.youtube.com/shorts/7xeLHxobaWs'},
-        {name:'Camilla isquios',reps:'3x12',rest:"2'",rpe:'3',weight:'25 kg',video:'https://www.youtube.com/shorts/rdWO5PhwY4I'},
-        {name:'Dominadas',reps:'3x7',rest:"3'",rpe:'1',obs:'Entre 7 y 6 reps',video:'https://www.youtube.com/shorts/foiX1-FSlRk'},
-        {name:'Vuelos posteriores c/mancuernas',reps:'4x12',rest:"2'",rpe:'2',weight:'4 kg',video:'https://www.youtube.com/shorts/b8HMNz4UMww'},
-        {name:'Mariposa (3 reps excéntricas)',reps:'4x12',rest:"2'",rpe:'3',weight:'30 kg',video:'https://www.youtube.com/shorts/Y_GU2pRCL6o'},
-        {name:'Flexiones cerradas',reps:'4x fallo',rest:"3'",rpe:'1',video:'https://www.youtube.com/shorts/0pUL8z6HoBc'},
-        {name:'Curl bíceps c/barra en polea',reps:'4x fallo',rest:"3'",rpe:'1',video:'https://www.youtube.com/shorts/oJGSW0z5Hew'},
-      ]}
-    ]}
+    {label:'DÍA 2',focus:'',sections:[]},
+    {label:'DÍA 3',focus:'',sections:[]}
   ]};
 }
 
@@ -815,11 +647,11 @@ function getVid(url){
   const m=url.match(/(?:shorts\/|v=|youtu\.be\/)([A-Za-z0-9_-]{11})/);
   return m?m[1]:null;
 }
-function esc(s){return(s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;')}
+function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 
 function renderWeekTabs() {
   document.getElementById('weekTabs').innerHTML = weekNames.map((n,i) =>
-    `<button class="wtab${i===activeWeek?' active':''}" onclick="switchWeek(${i})">${n}</button>`
+    `<button class="wtab${i===activeWeek?' active':''}" onclick="switchWeek(${i})">${esc(n)}</button>`
   ).join('');
 }
 
@@ -834,7 +666,7 @@ function renderDayTabs() {
   if (!data) return;
   document.getElementById('dayTabs').innerHTML = data.days.map((d,i) =>
     `<button class="dtab${i===activeDay?' active':''}" onclick="switchDay(${i})">
-      ${d.label}<span class="dtab-sub">${d.focus||'–'}</span>
+      ${esc(d.label)}<span class="dtab-sub">${esc(d.focus||'–')}</span>
     </button>`
   ).join('');
 }
@@ -852,7 +684,7 @@ function renderAll() {
     }
     let html='', ei=0;
     day.sections.forEach(sec => {
-      html += `<div class="section-title">${sec.title}</div>`;
+      html += `<div class="section-title">${esc(sec.title)}</div>`;
       sec.exercises.forEach(ex => {
         const k=eKey(di,ei), ck=cKey(di,ei);
         const done=!!completed[ck];
@@ -863,36 +695,37 @@ function renderAll() {
         const vk  = `${di}_${ei}`;
         const vOpen = !!openVideos[vk];
         html += `
-<div class="exercise-card${done?' completed':''}" id="card_${k}">
+<div class="exercise-card${done?' completed':''}" id="card_${esc(k)}">
   <div class="card-top">
     <div class="card-header">
-      <div class="exercise-name">${ex.name}</div>
-      <div class="check-circle" onclick="toggleDone('${ck}','${k}')">${done?'✓':'○'}</div>
+      <div class="exercise-name">${esc(ex.name)}</div>
+      <div class="check-circle" onclick="toggleDone('${esc(ck)}','${esc(k)}')">${done?'✓':'○'}</div>
     </div>
     <div class="meta-row">
-      ${ex.reps?`<span class="badge reps">🔁 ${ex.reps}</span>`:''}
-      ${ex.rest?`<span class="badge rest">⏱ ${ex.rest}</span>`:''}
-      ${ex.rpe ?`<span class="badge rpe">RPE ${ex.rpe}</span>`:''}
+      ${ex.reps?`<span class="badge reps">🔁 ${esc(ex.reps)}</span>`:''}
+      ${ex.rest?`<span class="badge rest">⏱ ${esc(ex.rest)}</span>`:''}
+      ${ex.rpe ?`<span class="badge rpe">RPE ${esc(ex.rpe)}</span>`:''}
+      ${wt ?`<span class="badge wt">🏋️ ${esc(wt)}</span>`:''}
     </div>
     <div class="edit-row">
       <div class="edit-group">
         <div class="edit-label">🏋️ Peso</div>
         <input class="edit-input" type="text" placeholder="ej. 20 kg" value="${esc(wt)}"
-          oninput="saveEdit('${k}','weight',this.value)" inputmode="decimal">
+          oninput="saveEdit('${esc(k)}','weight',this.value)" inputmode="decimal">
       </div>
       <div class="edit-group">
         <div class="edit-label">📌 Observaciones</div>
         <input class="edit-input obs" type="text" placeholder="Notas…" value="${esc(ob)}"
-          oninput="saveEdit('${k}','obs',this.value)">
+          oninput="saveEdit('${esc(k)}','obs',this.value)">
       </div>
     </div>
   </div>
   ${vid?`
-  <button class="btn-video-row${vOpen?' vopen':''}" id="vbtn_${vk}" onclick="toggleVideo('${vk}','${vid}')">
+  <button class="btn-video-row${vOpen?' vopen':''}" id="vbtn_${esc(vk)}" onclick="toggleVideo('${esc(vk)}','${vid}')">
     <span>▶</span><span>Ver video del ejercicio</span>
     <span class="vtoggle-arrow">${vOpen?'▲':'▼'}</span>
   </button>
-  <div class="video-wrap${vOpen?' vopen':''}" id="vwrap_${vk}">
+  <div class="video-wrap${vOpen?' vopen':''}" id="vwrap_${esc(vk)}">
     ${vOpen?`<iframe src="https://www.youtube.com/embed/${vid}?autoplay=0" allowfullscreen loading="lazy"></iframe>`:''}
   </div>`:''}
 </div>`;
@@ -917,7 +750,6 @@ function switchWeek(i) {
 
 function switchDay(i) {
   activeDay=i;
-  localStorage.setItem('gt_lastDay', String(i));
   document.querySelectorAll('.day-panel').forEach((p,j)=>p.classList.toggle('active',j===i));
   document.querySelectorAll('.dtab').forEach((t,j)=>t.classList.toggle('active',j===i));
   updateProgress();
