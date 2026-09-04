@@ -176,11 +176,36 @@ function parseSheet(name,rows){
   return {name,days};
 }
 function sortSheets(names){return names.sort((a,b)=>{const na=Number((a.match(/^Semana\s*(\d+)/i)||[])[1]||9999), nb=Number((b.match(/^Semana\s*(\d+)/i)||[])[1]||9999);if(na!==nb)return na-nb;return a.localeCompare(b);});}
-function chooseActive(){let max=-1,idx=0;book.forEach((s,i)=>{const n=Number((s.name.match(/^Semana\s*(\d+)/i)||[])[1]||-1);if(n>max){max=n;idx=i}});return idx;}
-async function loadWorkout(){setStatus('Cargando Google Sheets…');try{const wb=await fetchWorkbook();const names=sortSheets(wb.SheetNames.filter(n=>/^Semana\s*\d+$/i.test(n)||norm(n).includes('entrenamiento en casa')));book=names.map(n=>parseSheet(n,sheetToRows(wb.Sheets[n]))).filter(s=>s.days.length);activeSheet=chooseActive();activeDay=0;openV={};localStorage.setItem('rt_sheetUrl',document.getElementById('sheetUrl').value);render();setStatus(`✓ ${book.length} solapa(s) reales — mostrando ${book[activeSheet]?.name||'—'}`,'ok');document.getElementById('sourceTitle').textContent=`✓ ${book[activeSheet]?.name||'Rutina'} lista`;document.getElementById('sourceSub').textContent=`${book.length} solapa(s) · Google Sheets conectado`;toggleConfig(true);setTimeout(()=>toggleConfig(false),350);document.getElementById('diag').textContent=`Solapas: ${book.map(x=>x.name).join(' | ')}`;}catch(e){toggleConfig(true);setStatus('⚠ '+e.message,'err');toast(e.message,true);document.getElementById('diag').classList.add('show');document.getElementById('diag').textContent=e.message;}}
-function render(){renderWeeks();renderDays();renderPanels();document.getElementById('weekBadge').textContent=book[activeSheet]?.name||'—'}
-function renderWeeks(){document.getElementById('weekTabs').innerHTML=book.map((s,i)=>`<button class="tab ${i===activeSheet?'active':''}" onclick="activeSheet=${i};activeDay=0;render()">${s.name}</button>`).join('');setTimeout(()=>document.querySelector('.tab.active')?.scrollIntoView({inline:'center',block:'nearest'}),50)}
-function renderDays(){const s=book[activeSheet];document.getElementById('dayTabs').innerHTML=(s?.days||[]).map((d,i)=>`<button class="daytab ${i===activeDay?'active':''}" onclick="activeDay=${i};renderDays();renderPanels();"><div class="dayname">${d.label}</div><div class="daysub">${d.focus||'—'}</div></button>`).join('')}
+function chooseActive(){
+  // Primero: si hay sesión guardada, volver a donde quedó
+  const saved = localStorage.getItem('rt_lastSession');
+  if (saved) {
+    try {
+      const { sheetName, dayIdx } = JSON.parse(saved);
+      const si = book.findIndex(s => s.name === sheetName);
+      if (si >= 0) {
+        _pendingDay = dayIdx || 0;
+        return si;
+      }
+    } catch(e) {}
+  }
+  // Fallback: semana con número más alto (comportamiento anterior)
+  let max=-1,idx=0;
+  book.forEach((s,i)=>{const n=Number((s.name.match(/^Semana\s*(\d+)/i)||[])[1]||-1);if(n>max){max=n;idx=i}});
+  return idx;
+}
+let _pendingDay = 0; // día a restaurar luego de chooseActive
+async function loadWorkout(){setStatus('Cargando Google Sheets…');try{const wb=await fetchWorkbook();const names=sortSheets(wb.SheetNames.filter(n=>/^Semana\s*\d+$/i.test(n)||norm(n).includes('entrenamiento en casa')));book=names.map(n=>parseSheet(n,sheetToRows(wb.Sheets[n]))).filter(s=>s.days.length);activeSheet=chooseActive();activeDay=_pendingDay;_pendingDay=0;openV={};localStorage.setItem('rt_sheetUrl',document.getElementById('sheetUrl').value);render();setStatus(`✓ ${book.length} solapa(s) reales — mostrando ${book[activeSheet]?.name||'—'}`,'ok');document.getElementById('sourceTitle').textContent=`✓ ${book[activeSheet]?.name||'Rutina'} lista`;document.getElementById('sourceSub').textContent=`${book.length} solapa(s) · Google Sheets conectado`;toggleConfig(true);setTimeout(()=>toggleConfig(false),350);document.getElementById('diag').textContent=`Solapas: ${book.map(x=>x.name).join(' | ')}`;}catch(e){toggleConfig(true);setStatus('⚠ '+e.message,'err');toast(e.message,true);document.getElementById('diag').classList.add('show');document.getElementById('diag').textContent=e.message;}}
+function render(){renderWeeks();renderDays();renderPanels();document.getElementById('weekBadge').textContent=book[activeSheet]?.name||'—';saveSession();}
+function saveSession(){
+  if(!book[activeSheet]) return;
+  localStorage.setItem('rt_lastSession', JSON.stringify({
+    sheetName: book[activeSheet].name,
+    dayIdx: activeDay
+  }));
+}
+function renderWeeks(){document.getElementById('weekTabs').innerHTML=book.map((s,i)=>`<button class="tab ${i===activeSheet?'active':''}" onclick="activeSheet=${i};activeDay=0;saveSession();render()">${s.name}</button>`).join('');setTimeout(()=>document.querySelector('.tab.active')?.scrollIntoView({inline:'center',block:'nearest'}),50)}
+function renderDays(){const s=book[activeSheet];document.getElementById('dayTabs').innerHTML=(s?.days||[]).map((d,i)=>`<button class="daytab ${i===activeDay?'active':''}" onclick="activeDay=${i};saveSession();renderDays();renderPanels();"><div class="dayname">${d.label}</div><div class="daysub">${d.focus||'—'}</div></button>`).join('')}
 function renderPanels(){
   const s=book[activeSheet], d=s?.days[activeDay];
   const el=document.getElementById('panels');
