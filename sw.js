@@ -1,4 +1,4 @@
-const CACHE = 'mi-rutina-v25-profiles';
+const CACHE = 'mi-rutina-v26-plan-sheets';
 const APP_SHELL = ['/', '/index.html', '/routine-store.js', '/manifest.json', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', event => {

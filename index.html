@@ -83,7 +83,21 @@ async function fetchWorkbook(id){
     return XLSX.read(await response.arrayBuffer(),{type:'array'});
   }catch(e){throw new Error('No pude leer esta planilla. Revisá el enlace y sus permisos de lectura.');}
 }
-function sheetToRows(ws){return XLSX.utils.sheet_to_json(ws,{header:1,defval:''});}
+function sheetToRows(ws,sourceId=DEFAULT_SHEET_ID){
+  // Mantener la lectura histórica de Gustavo. En nuevas rutinas, respetar
+  // el texto visible: horas y pesos pueden estar almacenados como fechas.
+  const options={header:1,defval:''};
+  if(sourceId!==DEFAULT_SHEET_ID)options.raw=false;
+  return XLSX.utils.sheet_to_json(ws,options);
+}
+function isRoutineSheet(name,sourceId=DEFAULT_SHEET_ID){
+  return /^Semana\s*\d+$/i.test(name) || norm(name).includes('entrenamiento en casa') ||
+    (sourceId!==DEFAULT_SHEET_ID && /^Plan\s*\d+$/i.test(name));
+}
+function sheetNumber(name,sourceId=DEFAULT_SHEET_ID){
+  const pattern=sourceId===DEFAULT_SHEET_ID?/^Semana\s*(\d+)/i:/^(?:Semana|Plan)\s*(\d+)/i;
+  return Number((name.match(pattern)||[])[1]||-1);
+}
 function headerMap(row, fallbackNameCol=0){
   const h=row.map(norm);
   const idx=(arr)=>h.findIndex(x=>arr.some(a=>x.includes(a)));
@@ -152,7 +166,7 @@ function addExercise(curSec,row,map,rowNumber){
 }
 function parseSheet(name,rows,sourceId=DEFAULT_SHEET_ID){
   let days=[], curDay=null, curSec=null, map=null;
-  const isHome=!/^semana\s*\d+$/i.test(name);
+  const isHome=norm(name).includes('entrenamiento en casa');
   if(isHome){curDay={label:'CASA',focus:'Entrenamiento en casa',sections:[]};days.push(curDay);}
 
   for(let r=0;r<rows.length;r++){
@@ -198,7 +212,7 @@ function parseSheet(name,rows,sourceId=DEFAULT_SHEET_ID){
   });
   return {name,days};
 }
-function sortSheets(names){return names.sort((a,b)=>{const na=Number((a.match(/^Semana\s*(\d+)/i)||[])[1]||9999), nb=Number((b.match(/^Semana\s*(\d+)/i)||[])[1]||9999);if(na!==nb)return na-nb;return a.localeCompare(b);});}
+function sortSheets(names,sourceId=DEFAULT_SHEET_ID){return names.sort((a,b)=>{const aNum=sheetNumber(a,sourceId), bNum=sheetNumber(b,sourceId), na=aNum<0?9999:aNum, nb=bNum<0?9999:bNum;if(na!==nb)return na-nb;return a.localeCompare(b);});}
 function chooseActive(){
   // Primero: si hay sesión guardada, volver a donde quedó
   const saved = currentProfile?.lastSession;
@@ -214,7 +228,7 @@ function chooseActive(){
   }
   // Fallback: semana con número más alto (comportamiento anterior)
   let max=-1,idx=0;
-  book.forEach((s,i)=>{const n=Number((s.name.match(/^Semana\s*(\d+)/i)||[])[1]||-1);if(n>max){max=n;idx=i}});
+  book.forEach((s,i)=>{const n=sheetNumber(s.name,currentRoutineId);if(n>max){max=n;idx=i}});
   return idx;
 }
 let _pendingDay = 0; // día a restaurar luego de chooseActive
@@ -226,9 +240,9 @@ async function loadWorkout(){
     const requestedId=sid(document.getElementById('sheetUrl').value);
     const wb=await fetchWorkbook(requestedId);
     if(request!==loadRequest)return;
-    const names=sortSheets(wb.SheetNames.filter(n=>/^Semana\s*\d+$/i.test(n)||norm(n).includes('entrenamiento en casa')));
-    const nextBook=names.map(n=>parseSheet(n,sheetToRows(wb.Sheets[n]),requestedId)).filter(s=>s.days.length);
-    if(!nextBook.length)throw new Error('Esta planilla no tiene semanas y ejercicios con el formato esperado. La rutina anterior sigue intacta.');
+    const names=sortSheets(wb.SheetNames.filter(n=>isRoutineSheet(n,requestedId)),requestedId);
+    const nextBook=names.map(n=>parseSheet(n,sheetToRows(wb.Sheets[n],requestedId),requestedId)).filter(s=>s.days.length);
+    if(!nextBook.length)throw new Error('Esta planilla no tiene semanas o planes con ejercicios en el formato esperado. La rutina anterior sigue intacta.');
     if(currentProfile && !persistProfile())throw new Error('No se cambió de rutina porque no pude guardar tus últimos registros.');
     const nextProfile=profiles.read(requestedId);
     if(requestedId===incomingRoutineId && incomingName)nextProfile.displayName=incomingName;

@@ -36,7 +36,7 @@ function element() {
   };
 }
 
-function start({ seed = {}, search = '', original = null } = {}) {
+function start({ seed = {}, search = '', original = null, xlsx = null, workbooks = {} } = {}) {
   const values = new Map(Object.entries(seed)), elements = new Map(), requests = [], prompts = [];
   const document = { title: '', getElementById(id) { if (!elements.has(id)) elements.set(id, element()); return elements.get(id); }, querySelector: () => null };
   document.getElementById('sheetUrl').value = sheetUrl(GUS);
@@ -47,15 +47,15 @@ function start({ seed = {}, search = '', original = null } = {}) {
     URL, URLSearchParams, JSON, Promise, localStorage: storage, document, location: { search }, navigator: {},
     setTimeout(fn) { fn(); return 1; }, clearTimeout() {}, confirm: () => true, prompt: () => prompts.shift() ?? null,
     window: { addEventListener() {} },
-    // Se prueban el lector y los flujos de la app con datos sintéticos.
-    // La descarga XLSX real y su conversión con SheetJS no forman parte de esta prueba.
-    XLSX: { read: value => value, utils: { sheet_to_json: value => value } },
+    // Por defecto se usan datos sintéticos. La prueba opcional de archivo
+    // inyecta la misma versión de SheetJS que usa la app y el binario real.
+    XLSX: xlsx || { read: value => value, utils: { sheet_to_json: value => value } },
     fetch: async (address, options = {}) => {
       const url = new URL(address); requests.push({ url: url.href, method: options.method || 'GET', body: options.body });
       if (url.hostname === 'docs.google.com') {
         const id = url.pathname.split('/')[3];
         if (id === SLOW) await slow;
-        const body = id === BAD ? { SheetNames: [], Sheets: {} } : workbook(id === GUS ? 'Gustavo' : 'Vane');
+        const body = workbooks[id] ?? (id === BAD ? { SheetNames: [], Sheets: {} } : workbook(id === GUS ? 'Gustavo' : 'Vane'));
         return { ok: true, arrayBuffer: async () => body };
       }
       if (url.hostname === 'script.google.com') {
@@ -202,4 +202,101 @@ test('el lector conserva exactamente el plan de Gustavo respecto de la versión 
   assert.deepEqual(newApp.read('book'), oldApp.read('book'));
   assert.deepEqual(newApp.read('edits'), oldApp.read('edits'));
   assert.deepEqual(newApp.read('completed'), oldApp.read('completed'));
+});
+
+test('las nuevas rutinas incluyen Plan N en orden y mantienen cada día y columna de guardado', async () => {
+  const rows = workbook('Vane').Sheets['Semana 1'].map(row => row.slice(0, 6));
+  const data = { SheetNames: ['Semana 3', 'Plan 2', 'Plan 1', 'Seguimiento General'], Sheets: {
+    'Semana 3': rows, 'Plan 1': rows, 'Plan 2': rows,
+    'Seguimiento General': [['Semana', 'Entrenamientos realizados'], ['Semana 1', 0]]
+  } };
+  const app = start({ search: '?rutina=' + VANE, workbooks: { [VANE]: data } });
+  await app.settle();
+  assert.deepEqual(app.read('book.map(s => s.name)'), ['Plan 1', 'Plan 2', 'Semana 3']);
+  assert.equal(app.read('book[activeSheet].name'), 'Semana 3');
+  for (const sheet of app.read('book')) {
+    assert.deepEqual(sheet.days.map(d => d.label), ['DÍA 1', 'DÍA 2']);
+    assert.deepEqual(sheet.days[0].sections[1].exercises[0].cols, { weight: 6, obs: null });
+  }
+  app.context.edit('Plan 1_0_1', 'weight', '7');
+  app.context.edit('Plan 1_0_1', 'obs', 'Nota local');
+  app.prompts.push(vaneEndpoint);
+  await app.context.saveRemote();
+  const post = app.requests.find(r => r.method === 'POST');
+  assert.deepEqual(JSON.parse(post.body).changes, [
+    {sheet:'Plan 1',row:6,col:6,value:'7'}
+  ]);
+  // Las nuevas pestañas no amplían ni alteran el plan histórico de Gustavo.
+  const gus = start({ workbooks: { [GUS]: data } }); await gus.settle();
+  assert.deepEqual(gus.read('book.map(s => s.name)'), ['Semana 3']);
+});
+
+test('el XLSX privado conserva todos los ejercicios, valores visibles y destinos de guardado', {
+  skip: !(process.env.ROUTINE_XLSX_PATH && process.env.ROUTINE_SHEETJS_PATH)
+}, async t => {
+  const crypto = require('node:crypto');
+  const xlsx = require(path.resolve(process.env.ROUTINE_SHEETJS_PATH));
+  assert.equal(xlsx.version, '0.18.5', 'Debe usarse la misma versión de SheetJS que carga index.html');
+  const binary = fs.readFileSync(process.env.ROUTINE_XLSX_PATH);
+  const digest = value => crypto.createHash('sha256').update(value).digest('hex');
+  const beforeHash = digest(binary);
+  const source = xlsx.read(binary, {type:'array'});
+  const seed = legacySeed();
+  const app = start({ seed, search: '?rutina=' + VANE + '&nombre=Vane', xlsx, workbooks: { [VANE]: binary } });
+  await app.settle();
+  assert.equal(app.read('currentRoutineId'), VANE);
+  const book = app.read('book');
+  const routineNames = source.SheetNames.filter(n => /^(Semana|Plan)\s*\d+$/i.test(n));
+  assert.deepEqual(book.map(s => s.name).sort(), [...routineNames].sort());
+  const summary = [];
+  for (const sheet of book) {
+    const ws = source.Sheets[sheet.name];
+    const end = xlsx.utils.decode_range(ws['!ref']).e.r + 1;
+    const visible = address => String(ws[address]?.w ?? ws[address]?.v ?? '').trim();
+    const expected = [];
+    let day = '';
+    // Control independiente por las filas con video y series del archivo:
+    // no reutiliza la clasificación de filas ni los encabezados de la app.
+    for (let row = 1; row <= end; row++) {
+      if (/^D[IÍ]A\s*\d+/i.test(visible('A' + row))) day = 'DÍA ' + visible('A' + row).match(/\d+/)[0];
+      if (/^https?:\/\//.test(visible('B' + row)) && visible('A' + row) && visible('C' + row)) {
+        expected.push({row,day,name:visible('A'+row),video:visible('B'+row),reps:visible('C'+row),rest:visible('D'+row),rpe:visible('E'+row),weight:visible('F'+row)});
+      }
+    }
+    assert.ok(expected.length, 'El archivo de validación debe tener ejercicios con video y series');
+    const actual = sheet.days.flatMap(d => d.sections.flatMap(s => s.exercises.map(ex => ({...ex,day:d.label}))));
+    assert.deepEqual(actual.map(ex => ex.row), expected.map(ex => ex.row));
+    for (let i = 0; i < actual.length; i++) {
+      for (const field of ['day','name','video','reps','rest']) assert.equal(actual[i][field], expected[i][field], sheet.name+' fila '+actual[i].row+' '+field);
+      // Las filas de calentamiento pueden tener anotaciones en columnas sin encabezado.
+      if (actual[i].cols.weight) {
+        assert.equal(actual[i].cols.weight, 6);
+        assert.equal(actual[i].weight, expected[i].weight);
+        assert.equal(actual[i].rpe, expected[i].rpe);
+      }
+      assert.equal(actual[i].cols.obs, null, 'Este fixture no contiene una columna de observaciones');
+      assert.match(actual[i].video, /(?:shorts\/|v=|youtu\.be\/)[A-Za-z0-9_-]{11}/);
+    }
+    summary.push({pestana:sheet.name,dias:sheet.days.length,ejercicios:actual.length});
+  }
+  assert.deepEqual(app.read('completed'), {});
+  assert.deepEqual(app.read('edits'), {});
+  app.context.edit('Semana 3_0_0', 'weight', 'Prueba local');
+  app.context.toggleDone('Semana 3_0_0');
+  app.context.clearLocalData();
+  for (const [key,value] of Object.entries(seed)) if (key !== 'rt_sheetUrl') assert.equal(app.storage.getItem(key), value);
+  assert.equal(JSON.parse(app.storage.getItem('rt_profile_v1:' + GUS)).edits[KEY].weight, '25');
+  assert.equal(app.requests.filter(r => r.method === 'POST').length, 0);
+  assert.equal(digest(fs.readFileSync(process.env.ROUTINE_XLSX_PATH)), beforeHash);
+  if (process.env.ROUTINE_BASELINE_PATH) {
+    const oldHtml = fs.readFileSync(process.env.ROUTINE_BASELINE_PATH, 'utf8');
+    const original = [...oldHtml.matchAll(/<script>([\s\S]*?)<\/script>/g)].at(-1)[1];
+    const options = { seed:legacySeed(),xlsx,workbooks:{[GUS]:binary} };
+    const oldApp = start({...options,original}), newApp = start(options);
+    await oldApp.settle(); await newApp.settle();
+    assert.deepEqual(newApp.read('book'), oldApp.read('book'), 'El lector de Gustavo debe conservar los valores y el orden de la versión publicada');
+    assert.deepEqual(newApp.read('edits'), oldApp.read('edits'));
+    assert.deepEqual(newApp.read('completed'), oldApp.read('completed'));
+  }
+  t.diagnostic(JSON.stringify({archivoSinCambios:true,solapas:summary}));
 });

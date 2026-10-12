@@ -58,7 +58,7 @@ function doPost(e) {
     var sources = {};
     // Validar todo el lote antes de escribir la primera celda.
     var pending = body.changes.map(function(c) {
-      if (!c || typeof c.sheet !== 'string' || !(/^semana\s*\d+$/i.test(c.sheet) || normalize_(c.sheet).indexOf('entrenamiento en casa') >= 0)) {
+      if (!c || typeof c.sheet !== 'string' || !(/^(?:semana|plan)\s*\d+$/i.test(c.sheet) || normalize_(c.sheet).indexOf('entrenamiento en casa') >= 0)) {
         throw new Error('La pestaña no pertenece a una rutina.');
       }
       if (!Number.isInteger(c.row) || !Number.isInteger(c.col) || c.row < 1 || c.col < 1) throw new Error('La celda no es válida.');

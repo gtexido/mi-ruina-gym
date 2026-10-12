@@ -4,7 +4,7 @@ const vm = require('node:vm');
 const fs = require('node:fs');
 const path = require('node:path');
 const source = fs.readFileSync(path.join(__dirname, '../apps-script-webhook.gs'), 'utf8');
-function fixture() {
+function fixture(sheetName = 'Semana 1') {
   const writes = [];
   const rows = [
     ['DÍA 1'],
@@ -16,7 +16,7 @@ function fixture() {
   ];
   const sheet = { getDataRange: () => ({ getValues: () => rows }), getRange: (row, col) => ({ setValue: value => writes.push({ row, col, value }) }) };
   const context = vm.createContext({
-    SpreadsheetApp: { getActiveSpreadsheet: () => ({ getId: () => 'fixture-id', getSheetByName: name => name === 'Semana 1' ? sheet : null }) },
+    SpreadsheetApp: { getActiveSpreadsheet: () => ({ getId: () => 'fixture-id', getSheetByName: name => name === sheetName ? sheet : null }) },
     ContentService: { MimeType: { JSON: 'json' }, createTextOutput: text => ({ text, setMimeType() { return this; } }) }
   });
   vm.runInContext(source, context);
@@ -50,4 +50,14 @@ test('rechaza encabezados, secciones y celdas fuera del plan', () => {
     assert.equal(f.post({ spreadsheetId: 'fixture-id', changes: [{ sheet: 'Semana 1', row, col: 6, value: 'x' }] }).ok, false);
     assert.equal(f.writes.length, 0);
   }
+});
+
+test('Plan N permite pesos y notas, pero nunca ejercicios ni pestañas de seguimiento', () => {
+  const f = fixture('Plan 2');
+  assert.equal(f.post({spreadsheetId:'fixture-id',changes:[{sheet:'Plan 2',row:6,col:6,value:'8'}]}).ok, true);
+  assert.equal(f.post({spreadsheetId:'fixture-id',changes:[{sheet:'Plan 2',row:6,col:1,value:'Otro ejercicio'}]}).ok, false);
+  assert.equal(f.writes.length, 1);
+  const other = fixture('Seguimiento General');
+  assert.equal(other.post({spreadsheetId:'fixture-id',changes:[{sheet:'Seguimiento General',row:3,col:6,value:'8'}]}).ok, false);
+  assert.equal(other.writes.length, 0);
 });
