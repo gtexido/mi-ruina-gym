@@ -1,5 +1,5 @@
-const CACHE = 'mi-rutina-v24-premium-squad';
-const APP_SHELL = ['/', '/index.html', '/manifest.json', '/icon-192.png', '/icon-512.png'];
+const CACHE = 'mi-rutina-v25-profiles';
+const APP_SHELL = ['/', '/index.html', '/routine-store.js', '/manifest.json', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(APP_SHELL).catch(() => {})));
@@ -27,3 +27,4 @@ self.addEventListener('fetch', event => {
     }).catch(() => caches.match(event.request))
   );
 });
+
