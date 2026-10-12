@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="Mi Rutina" />
 <meta name="theme-color" content="#f97316" />
-<title>Mi Rutina Premium v2.2 — Gustavo</title>
+<title>Mi Rutina — Gustavo</title>
 <link rel="manifest" href="/manifest.json" />
 <link rel="apple-touch-icon" href="/icon-192.png" />
 <link rel="icon" type="image/png" href="/icon-192.png" />
@@ -16,6 +16,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="/routine-store.js"></script>
 <style>
 :root{--bg:#070a10;--panel:#0f1520;--card:#171e2b;--card2:#111722;--line:#283247;--muted:#8b95ad;--text:#eef3ff;--accent:#f97316;--accent2:#f59e0b;--green:#22c55e;--red:#ff5f56;--blue:#38bdf8;--violet:#a78bfa}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}html{scroll-behavior:smooth}body{font-family:'DM Sans',sans-serif;background:radial-gradient(circle at top,#121827 0,#070a10 45%,#05070b 100%);color:var(--text);min-height:100vh;padding:env(safe-area-inset-top,0) 0 28px}.app{width:min(100%,520px);margin:0 auto;background:#090d15;min-height:100vh;border-left:1px solid #1f2937;border-right:1px solid #1f2937}.header{position:relative;text-align:center;padding:22px 14px 12px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#101623,#090d15)}.header-sub{font-size:9px;letter-spacing:4px;color:var(--accent2);text-transform:uppercase;font-weight:800}.header h1{font-family:'Bebas Neue';font-size:42px;line-height:.95;letter-spacing:2px;margin-top:3px;background:linear-gradient(135deg,#fbbf24,#fb923c,#ef4444);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}.pill{display:inline-flex;align-items:center;gap:6px;margin-top:8px;border:1px solid var(--line);background:#182131;color:var(--muted);border-radius:999px;padding:5px 12px;font-size:11px}.install{position:absolute;right:10px;top:12px;border:0;border-radius:10px;background:linear-gradient(135deg,#f59e0b,#f97316);color:#111;font-weight:900;padding:8px 10px;display:none;font-size:12px}.install.show{display:block}.config{padding:9px 10px;border-bottom:1px solid var(--line);background:#101622}.source-mini{display:none;align-items:center;justify-content:space-between;gap:8px;border:1px solid var(--line);background:linear-gradient(180deg,#121a27,#0f1520);border-radius:13px;padding:8px 10px}.source-mini .left{min-width:0}.source-mini b{display:block;font-size:12px;color:var(--green)}.source-mini span{display:block;font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.source-actions{display:flex;gap:6px;flex:0 0 auto}.mini-btn{border:1px solid var(--line);background:#1b2434;color:var(--text);border-radius:10px;padding:7px 9px;font-size:11px;font-weight:900}.mini-btn.primary{background:linear-gradient(135deg,#f59e0b,#f97316);color:#111;border:0}.config.compact{padding:7px 10px}.config.compact .row,.config.compact .status{display:none}.config.compact .source-mini{display:flex}.row{display:flex;gap:7px}.url{flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;background:#171e2c;color:var(--text);padding:9px 10px;font-size:11px;outline:none}.btn{border:0;border-radius:10px;background:linear-gradient(135deg,#f59e0b,#f97316);color:#111;font-weight:900;padding:9px 12px;white-space:nowrap;font-size:12px}.btn.secondary{background:#1f2937;color:var(--text);border:1px solid var(--line)}.status{min-height:18px;text-align:center;font-size:11px;margin-top:6px;color:var(--muted)}.status.ok{color:var(--green)}.status.err{color:var(--red)}.tabs{display:flex;gap:7px;overflow-x:auto;padding:8px 10px;border-bottom:1px solid var(--line);scrollbar-width:none;background:#0b111b}.tabs::-webkit-scrollbar{display:none}.tab{flex:0 0 auto;border:1px solid var(--line);border-radius:999px;background:#172031;color:var(--muted);font-weight:800;font-size:11px;padding:7px 12px}.tab.active{border-color:var(--accent2);color:#ffc04a;background:#1d1720}.daytabs{display:flex;gap:7px;padding:8px 10px;border-bottom:1px solid var(--line);background:rgba(13,18,28,.98);backdrop-filter:blur(10px);position:sticky;top:0;z-index:90;box-shadow:0 8px 20px #0006}.daytab{flex:1;border:1px solid var(--line);border-radius:14px;background:#171e2c;color:#76829d;padding:8px 5px;text-align:center;min-height:64px}.daytab.active{background:linear-gradient(135deg,#f59e0b,#fb923c,#ef4444);color:#0c0c0c;border-color:transparent}.dayname{font-family:'Bebas Neue';font-size:22px;letter-spacing:1px}.daysub{font-size:8.5px;letter-spacing:1px;text-transform:uppercase;font-weight:900;margin-top:2px}.progress{padding:7px 12px 6px;background:#090d15;position:relative;z-index:30}.progress .txt{display:flex;justify-content:space-between;color:var(--muted);font-size:12px;margin-bottom:6px}.bar{height:4px;background:#2c344a;border-radius:999px;overflow:hidden}.fill{height:100%;width:0;background:linear-gradient(90deg,#f59e0b,#84cc16,#22c55e);transition:.25s}.quickbar{position:sticky;top:86px;z-index:80;margin:0 10px 8px;padding:7px 10px;border:1px solid var(--line);border-radius:13px;background:rgba(17,23,34,.97);backdrop-filter:blur(10px);display:flex;justify-content:space-between;align-items:center;gap:8px;box-shadow:0 8px 18px #0005}.quick-main{font-size:11.5px;font-weight:900;color:#fbbf24;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.quick-sub{font-size:10.5px;color:var(--muted);white-space:nowrap}.panel{display:none;padding:0 10px 138px;scroll-margin-top:150px}.panel.active{display:block}.section{width:100%;border:0;background:transparent;font-family:'Bebas Neue';letter-spacing:3px;color:#fbbf24;margin:10px 0 7px;font-size:17px;display:flex;align-items:center;gap:10px;text-align:left}.section:after{content:'';height:1px;background:var(--line);flex:1}.section .counter{font-family:'DM Sans';letter-spacing:0;font-size:10px;color:var(--muted);border:1px solid var(--line);background:#151c2a;border-radius:999px;padding:3px 7px}.section .arrow{font-family:'DM Sans';letter-spacing:0;font-size:12px;color:var(--muted)}.collapsed-note{color:var(--muted);font-size:11px;margin:0 0 9px 2px}.card{border:1px solid var(--line);border-radius:14px;background:linear-gradient(180deg,#1a2230,#161d29);margin-bottom:10px;overflow:hidden}.card.done{border-color:var(--green);background:linear-gradient(180deg,#142419,#111e16)}.ctop{padding:10px 11px}.chead{display:flex;gap:9px;align-items:flex-start}.ename{font-weight:900;font-size:14px;line-height:1.2;flex:1}.check{width:27px;height:27px;border-radius:50%;border:1px solid #344057;background:#121928;color:#8b95ad;display:flex;align-items:center;justify-content:center;font-weight:900;flex:0 0 auto}.card.done .check{background:var(--green);border-color:var(--green);color:#09220f}.badges{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}.badge{font-size:11px;font-weight:800;border:1px solid var(--line);border-radius:7px;padding:3px 7px;background:#111827}.b-reps{color:var(--blue);border-color:#2563eb55}.b-rest{color:var(--violet);border-color:#7c3aed55}.b-rpe{color:#fb7185;border-color:#ef444455}.b-weight{color:#fbbf24;border-color:#f59e0b55}.fields{display:grid;grid-template-columns:.75fr 1.25fr;gap:7px;margin-top:8px}.field label{display:block;font-size:8px;color:var(--muted);letter-spacing:1.3px;text-transform:uppercase;margin-bottom:3px}.field input{width:100%;border:1px solid var(--line);background:#0f1622;color:var(--text);border-radius:8px;padding:7px 8px;outline:none;font-size:12px}.field input:focus{border-color:var(--accent)}.video{width:100%;border:0;border-top:1px solid #3b1a1a;background:#211010;color:#ff6961;padding:9px 12px;font-weight:900;text-align:left;display:flex;justify-content:space-between;font-size:12px}.vbox{max-height:0;overflow:hidden;background:#000;transition:.25s}.vbox.open{max-height:260px}.vbox iframe{width:100%;aspect-ratio:16/9;border:0;display:block}.empty{text-align:center;color:var(--muted);padding:42px 18px}.tools{position:fixed;left:50%;bottom:calc(10px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(calc(100% - 18px),502px);padding:7px;border:1px solid var(--line);border-radius:18px;background:rgba(13,18,28,.96);backdrop-filter:blur(14px);display:flex;gap:6px;z-index:120;box-shadow:0 12px 35px #000b}.tools .btn{flex:1;padding:8px 5px;font-size:10.5px;border-radius:12px}.toast{display:none!important}.diag{font-size:11px;color:var(--muted);padding:8px 12px;border-top:1px dashed var(--line);display:none}.diag.show{display:block}.stats-row{display:flex;gap:6px;overflow-x:auto;padding:0 10px 8px}.stat{flex:1;min-width:95px;border:1px solid var(--line);border-radius:12px;background:#111722;padding:7px 9px}.stat b{display:block;font-size:14px;color:#fff}.stat span{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}@media(min-width:700px){body{padding:20px}.app{border-radius:24px;overflow:hidden;box-shadow:0 20px 80px #0008;min-height:auto}.header h1{font-size:48px}.daytabs{top:0}.quickbar{top:86px}.tools{position:sticky;transform:none;margin:0 auto;width:100%;bottom:auto;border-radius:0 0 24px 24px}.panel{padding-bottom:90px}}
@@ -24,22 +25,37 @@
 <body>
 <div class="app">
   <div class="header"><div class="header-sub">Plan de entrenamiento</div><h1>MI RUTINA</h1><div class="pill" id="weekBadge">—</div><button class="install" id="installBtn">📲 Instalar</button></div>
-  <div class="config" id="configBox"><div class="source-mini"><div class="left"><b id="sourceTitle">✓ Google Sheets conectado</b><span id="sourceSub">Tocá ⚙️ para cambiar la fuente</span></div><div class="source-actions"><button class="mini-btn primary" onclick="event.stopPropagation();loadWorkout()">↻</button><button class="mini-btn" onclick="event.stopPropagation();toggleConfig(true)">⚙️</button></div></div><div class="row"><input id="sheetUrl" class="url" value="https://docs.google.com/spreadsheets/d/1dLY4XouNf4CaoOtxzMFB4ojUO9_XV3pK/edit?usp=drive_link" /><button class="btn" onclick="loadWorkout()">↻ Cargar</button></div><div class="status" id="status"></div></div>
+  <div class="config" id="configBox"><div class="source-mini"><div class="left"><b id="sourceTitle">✓ Google Sheets conectado</b><span id="sourceSub">Tocá ⚙️ para cambiar la fuente</span></div><div class="source-actions"><button class="mini-btn primary" onclick="event.stopPropagation();loadWorkout()">↻</button><button class="mini-btn" onclick="event.stopPropagation();toggleConfig(true)">⚙️</button></div></div><div class="row"><input id="sheetUrl" class="url" aria-label="Enlace de tu rutina en Google Sheets" value="https://docs.google.com/spreadsheets/d/1dLY4XouNf4CaoOtxzMFB4ojUO9_XV3pK/edit?usp=drive_link" /><button class="btn" onclick="loadWorkout()">↻ Cargar</button></div><div class="status" id="status"></div></div>
   <div class="tabs" id="weekTabs"></div><div class="daytabs" id="dayTabs"></div>
   <div class="progress"><div class="txt"><span>Progreso del día</span><span id="pText">0 / 0</span></div><div class="bar"><div class="fill" id="pFill"></div></div></div>
   <div class="quickbar" id="quickbar"><div class="quick-main">Preparando rutina…</div><div class="quick-sub">0%</div></div>
   <div id="panels"></div>
-  <div class="tools"><button class="btn secondary" onclick="resetDay()">↺ Reiniciar día</button><button class="btn secondary" onclick="saveRemote()">💾 Guardar Sheet</button><button class="btn secondary" onclick="clearLocalData()">🧹 Limpiar local</button></div>
+  <div class="tools"><button class="btn secondary" onclick="resetDay()">↺ Reiniciar día</button><button id="saveSheetBtn" class="btn secondary" onclick="saveRemote()" disabled>💾 Guardar Sheet</button><button class="btn secondary" onclick="clearLocalData()">🧹 Limpiar local</button></div>
   <div class="diag" id="diag"></div>
 </div><div class="toast" id="toast"></div>
 <script>
 const DEFAULT_URL='https://docs.google.com/spreadsheets/d/1dLY4XouNf4CaoOtxzMFB4ojUO9_XV3pK/edit?usp=drive_link';
-let book=[], activeSheet=0, activeDay=0, openV={}, completed=JSON.parse(localStorage.getItem('rt_v12_completed')||'{}'), edits=JSON.parse(localStorage.getItem('rt_v12_edits')||'{}'), collapsed=JSON.parse(localStorage.getItem('rt_v2_collapsed')||'{}');
+const DEFAULT_SHEET_ID='1dLY4XouNf4CaoOtxzMFB4ojUO9_XV3pK';
+let book=[], activeSheet=0, activeDay=0, openV={}, completed={}, edits={}, collapsed={};
+let profiles=null, currentProfile=null, currentRoutineId='', loadRequest=0, isLoading=false, remoteBusy=false;
+let incomingRoutineId='', incomingName='';
+function routineName(){return currentProfile?.displayName || (currentRoutineId===DEFAULT_SHEET_ID?'Gustavo':'Mi rutina');}
+function persistProfile(){
+  if(!profiles || !currentProfile || !currentRoutineId)return false;
+  try{
+    Object.assign(currentProfile,{completed,edits,collapsed});
+    profiles.write(currentRoutineId,currentProfile);
+    return true;
+  }catch(e){toast('No pude guardar en este dispositivo. Tus datos anteriores se conservaron.',true);return false;}
+}
+function updateSaveButton(){
+  document.getElementById('saveSheetBtn').disabled=!currentRoutineId || isLoading || remoteBusy;
+}
 let deferredPrompt=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;document.getElementById('installBtn').classList.add('show')});
 document.getElementById('installBtn').onclick=async()=>{if(!deferredPrompt)return;deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;document.getElementById('installBtn').classList.remove('show')};
 if('serviceWorker'in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
-function sid(url){return (url||'').match(/\/d\/([a-zA-Z0-9_-]+)/)?.[1]||'1dLY4XouNf4CaoOtxzMFB4ojUO9_XV3pK'}
+function sid(url){return RoutineProfiles.sheetId(url);}
 function clean(v){return (v==null?'':String(v)).trim()} function norm(v){return clean(v).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ')}
 function toast(m,err=false){
   const t=document.getElementById('toast');
@@ -53,15 +69,35 @@ function toast(m,err=false){
   } else {
     setStatus('✓ '+m,'ok');
     if(title) title.textContent='✓ '+m;
-    if(sub) sub.textContent='Actualizado correctamente';
+    if(sub) sub.textContent='Rutina: '+routineName();
     toggleConfig(false);
   }
 }
 function setStatus(m,type=''){const s=document.getElementById('status');s.textContent=m;s.className='status '+type}
 function toggleConfig(open){const c=document.getElementById('configBox'); if(!c)return; c.classList.toggle('compact', !open)}
 function key(si,di,ei){return `${book[si]?.name||'S'}_${di}_${ei}`}
-async function fetchWorkbook(){const id=sid(document.getElementById('sheetUrl').value);const urls=[`https://docs.google.com/spreadsheets/d/${id}/export?format=xlsx&cachebust=${Date.now()}`,`https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&sheet=Semana%206&cachebust=${Date.now()}`];try{const res=await fetch(urls[0],{cache:'no-store'});if(!res.ok)throw new Error('HTTP '+res.status);const buf=await res.arrayBuffer();return XLSX.read(buf,{type:'array'});}catch(e){throw new Error('No pude descargar el XLSX desde Google Sheets. Revisá que el archivo esté compartido como "Cualquier persona con el link puede ver".');}}
-function sheetToRows(ws){return XLSX.utils.sheet_to_json(ws,{header:1,defval:''});}
+async function fetchWorkbook(id){
+  try{
+    const response=await fetch('https://docs.google.com/spreadsheets/d/'+id+'/export?format=xlsx&cachebust='+Date.now(),{cache:'no-store'});
+    if(!response.ok)throw new Error('HTTP '+response.status);
+    return XLSX.read(await response.arrayBuffer(),{type:'array'});
+  }catch(e){throw new Error('No pude leer esta planilla. Revisá el enlace y sus permisos de lectura.');}
+}
+function sheetToRows(ws,sourceId=DEFAULT_SHEET_ID){
+  // Mantener la lectura histórica de Gustavo. En nuevas rutinas, respetar
+  // el texto visible: horas y pesos pueden estar almacenados como fechas.
+  const options={header:1,defval:''};
+  if(sourceId!==DEFAULT_SHEET_ID)options.raw=false;
+  return XLSX.utils.sheet_to_json(ws,options);
+}
+function isRoutineSheet(name,sourceId=DEFAULT_SHEET_ID){
+  return /^Semana\s*\d+$/i.test(name) || norm(name).includes('entrenamiento en casa') ||
+    (sourceId!==DEFAULT_SHEET_ID && /^Plan\s*\d+$/i.test(name));
+}
+function sheetNumber(name,sourceId=DEFAULT_SHEET_ID){
+  const pattern=sourceId===DEFAULT_SHEET_ID?/^Semana\s*(\d+)/i:/^(?:Semana|Plan)\s*(\d+)/i;
+  return Number((name.match(pattern)||[])[1]||-1);
+}
 function headerMap(row, fallbackNameCol=0){
   const h=row.map(norm);
   const idx=(arr)=>h.findIndex(x=>arr.some(a=>x.includes(a)));
@@ -99,7 +135,8 @@ function focusFromSection(sec){
   let s=sec.replace(/entrada en calor|zona media|entrenamiento/ig,'').replace(/[():]/g,'').replace(/\s+/g,' ').trim();
   return s || '';
 }
-function defaultFocusByDay(label){
+function defaultFocusByDay(label,sourceId=DEFAULT_SHEET_ID){
+  if(sourceId!==DEFAULT_SHEET_ID)return 'Entrenamiento';
   const n=Number((label||'').match(/\d+/)?.[0]||0);
   if(n===1)return 'Espalda - Hombros';
   if(n===2)return 'Pecho - Tríceps';
@@ -127,9 +164,9 @@ function addExercise(curSec,row,map,rowNumber){
     cols:{weight:map.weight>=0?map.weight+1:null,obs:map.obs>=0?map.obs+1:null}
   });
 }
-function parseSheet(name,rows){
+function parseSheet(name,rows,sourceId=DEFAULT_SHEET_ID){
   let days=[], curDay=null, curSec=null, map=null;
-  const isHome=!/^semana\s*\d+$/i.test(name);
+  const isHome=norm(name).includes('entrenamiento en casa');
   if(isHome){curDay={label:'CASA',focus:'Entrenamiento en casa',sections:[]};days.push(curDay);}
 
   for(let r=0;r<rows.length;r++){
@@ -138,7 +175,7 @@ function parseSheet(name,rows){
     if(!row.some(x=>clean(x))) continue;
 
     if(isDay(c0)){
-      curDay={label:'DÍA '+dayNum(c0),focus:defaultFocusByDay(c0),sections:[]};
+      curDay={label:'DÍA '+dayNum(c0),focus:defaultFocusByDay(c0,sourceId),sections:[]};
       days.push(curDay); curSec=null; map=null; continue;
     }
     if(!curDay) continue;
@@ -148,7 +185,7 @@ function parseSheet(name,rows){
       curSec=ensureSection(curDay,secTitle);
       map=null;
       if(norm(secTitle).includes('entrenamiento')){
-        curDay.focus=focusFromSection(secTitle)||curDay.focus||defaultFocusByDay(curDay.label);
+        curDay.focus=focusFromSection(secTitle)||curDay.focus||defaultFocusByDay(curDay.label,sourceId);
       }
       // Muchas filas de sección son también encabezado: "Zona media:" + Video + Series + Descanso.
       if(rowHasColumnHeader(row)) map=headerMap(row,0);
@@ -170,39 +207,74 @@ function parseSheet(name,rows){
     d.sections=d.sections.filter(s=>s.exercises.length);
     if(!d.focus){
       const ent=d.sections.find(s=>norm(s.title).includes('entrenamiento'));
-      d.focus=focusFromSection(ent?.title)||defaultFocusByDay(d.label);
+      d.focus=focusFromSection(ent?.title)||defaultFocusByDay(d.label,sourceId);
     }
   });
   return {name,days};
 }
-function sortSheets(names){return names.sort((a,b)=>{const na=Number((a.match(/^Semana\s*(\d+)/i)||[])[1]||9999), nb=Number((b.match(/^Semana\s*(\d+)/i)||[])[1]||9999);if(na!==nb)return na-nb;return a.localeCompare(b);});}
+function sortSheets(names,sourceId=DEFAULT_SHEET_ID){return names.sort((a,b)=>{const aNum=sheetNumber(a,sourceId), bNum=sheetNumber(b,sourceId), na=aNum<0?9999:aNum, nb=bNum<0?9999:bNum;if(na!==nb)return na-nb;return a.localeCompare(b);});}
 function chooseActive(){
   // Primero: si hay sesión guardada, volver a donde quedó
-  const saved = localStorage.getItem('rt_lastSession');
+  const saved = currentProfile?.lastSession;
   if (saved) {
     try {
-      const { sheetName, dayIdx } = JSON.parse(saved);
+      const { sheetName, dayIdx } = saved;
       const si = book.findIndex(s => s.name === sheetName);
       if (si >= 0) {
-        _pendingDay = dayIdx || 0;
+        _pendingDay = Number.isInteger(dayIdx) ? Math.max(0,Math.min(dayIdx,book[si].days.length-1)) : 0;
         return si;
       }
     } catch(e) {}
   }
   // Fallback: semana con número más alto (comportamiento anterior)
   let max=-1,idx=0;
-  book.forEach((s,i)=>{const n=Number((s.name.match(/^Semana\s*(\d+)/i)||[])[1]||-1);if(n>max){max=n;idx=i}});
+  book.forEach((s,i)=>{const n=sheetNumber(s.name,currentRoutineId);if(n>max){max=n;idx=i}});
   return idx;
 }
 let _pendingDay = 0; // día a restaurar luego de chooseActive
-async function loadWorkout(){setStatus('Cargando Google Sheets…');try{const wb=await fetchWorkbook();const names=sortSheets(wb.SheetNames.filter(n=>/^Semana\s*\d+$/i.test(n)||norm(n).includes('entrenamiento en casa')));book=names.map(n=>parseSheet(n,sheetToRows(wb.Sheets[n]))).filter(s=>s.days.length);activeSheet=chooseActive();activeDay=_pendingDay;_pendingDay=0;openV={};localStorage.setItem('rt_sheetUrl',document.getElementById('sheetUrl').value);render();setStatus(`✓ ${book.length} solapa(s) reales — mostrando ${book[activeSheet]?.name||'—'}`,'ok');document.getElementById('sourceTitle').textContent=`✓ ${book[activeSheet]?.name||'Rutina'} lista`;document.getElementById('sourceSub').textContent=`${book.length} solapa(s) · Google Sheets conectado`;toggleConfig(true);setTimeout(()=>toggleConfig(false),350);document.getElementById('diag').textContent=`Solapas: ${book.map(x=>x.name).join(' | ')}`;}catch(e){toggleConfig(true);setStatus('⚠ '+e.message,'err');toast(e.message,true);document.getElementById('diag').classList.add('show');document.getElementById('diag').textContent=e.message;}}
-function render(){renderWeeks();renderDays();renderPanels();document.getElementById('weekBadge').textContent=book[activeSheet]?.name||'—';saveSession();}
+async function loadWorkout(){
+  const request=++loadRequest;
+  isLoading=true; updateSaveButton(); setStatus('Cargando Google Sheets…');
+  try{
+    if(!profiles)throw new Error('No se pudo iniciar el guardado local. Tus datos anteriores se conservaron.');
+    const requestedId=sid(document.getElementById('sheetUrl').value);
+    const wb=await fetchWorkbook(requestedId);
+    if(request!==loadRequest)return;
+    const names=sortSheets(wb.SheetNames.filter(n=>isRoutineSheet(n,requestedId)),requestedId);
+    const nextBook=names.map(n=>parseSheet(n,sheetToRows(wb.Sheets[n],requestedId),requestedId)).filter(s=>s.days.length);
+    if(!nextBook.length)throw new Error('Esta planilla no tiene semanas o planes con ejercicios en el formato esperado. La rutina anterior sigue intacta.');
+    if(currentProfile && !persistProfile())throw new Error('No se cambió de rutina porque no pude guardar tus últimos registros.');
+    const nextProfile=profiles.read(requestedId);
+    if(requestedId===incomingRoutineId && incomingName)nextProfile.displayName=incomingName;
+    if(!nextProfile.displayName && requestedId===DEFAULT_SHEET_ID)nextProfile.displayName='Gustavo';
+    profiles.write(requestedId,nextProfile);
+    localStorage.setItem('rt_sheetUrl',RoutineProfiles.canonicalUrl(requestedId));
+    currentRoutineId=requestedId; currentProfile=nextProfile;
+    completed=nextProfile.completed; edits=nextProfile.edits; collapsed=nextProfile.collapsed;
+    book=nextBook; activeSheet=chooseActive(); activeDay=_pendingDay; _pendingDay=0; openV={};
+    document.getElementById('sheetUrl').value=RoutineProfiles.canonicalUrl(requestedId);
+    document.title='Mi Rutina — '+routineName();
+    render();
+    setStatus('✓ '+book.length+' solapa(s) — '+routineName(),'ok');
+    document.getElementById('sourceTitle').textContent='✓ '+routineName()+' · '+(book[activeSheet]?.name||'Rutina');
+    document.getElementById('sourceSub').textContent='Plan del entrenador · registros separados en este dispositivo';
+    toggleConfig(false);
+    document.getElementById('diag').classList.remove('show');
+    document.getElementById('diag').textContent='';
+  }catch(e){
+    if(request!==loadRequest)return;
+    toggleConfig(true); toast(e.message,true);
+    document.getElementById('diag').classList.add('show');
+    document.getElementById('diag').textContent=e.message;
+  }finally{
+    if(request===loadRequest){isLoading=false;updateSaveButton();}
+  }
+}
+function render(){renderWeeks();renderDays();renderPanels();document.getElementById('weekBadge').textContent=routineName()+' · '+(book[activeSheet]?.name||'—');saveSession();}
 function saveSession(){
   if(!book[activeSheet]) return;
-  localStorage.setItem('rt_lastSession', JSON.stringify({
-    sheetName: book[activeSheet].name,
-    dayIdx: activeDay
-  }));
+  currentProfile.lastSession={sheetName:book[activeSheet].name,dayIdx:activeDay};
+  persistProfile();
 }
 function renderWeeks(){document.getElementById('weekTabs').innerHTML=book.map((s,i)=>`<button class="tab ${i===activeSheet?'active':''}" onclick="activeSheet=${i};activeDay=0;saveSession();render()">${s.name}</button>`).join('');setTimeout(()=>document.querySelector('.tab.active')?.scrollIntoView({inline:'center',block:'nearest'}),50)}
 function renderDays(){const s=book[activeSheet];document.getElementById('dayTabs').innerHTML=(s?.days||[]).map((d,i)=>`<button class="daytab ${i===activeDay?'active':''}" onclick="activeDay=${i};saveSession();renderDays();renderPanels();"><div class="dayname">${d.label}</div><div class="daysub">${d.focus||'—'}</div></button>`).join('')}
@@ -227,7 +299,7 @@ function renderPanels(){
   });
   html+='</div>'; el.innerHTML=html; updateProgress(); updateQuickbar();
 }
-function toggleSection(k){collapsed[k]=!collapsed[k];localStorage.setItem('rt_v2_collapsed',JSON.stringify(collapsed));renderPanels();}
+function toggleSection(k){if(!currentProfile)return;collapsed[k]=!collapsed[k];persistProfile();renderPanels();}
 function updateQuickbar(){
   const s=book[activeSheet], d=s?.days[activeDay]; const qb=document.getElementById('quickbar'); if(!qb||!d)return;
   let total=0,done=0,ei=0; d.sections.forEach(sec=>sec.exercises.forEach(()=>{total++; if(completed[key(activeSheet,activeDay,ei)]) done++; ei++;}));
@@ -236,13 +308,92 @@ function updateQuickbar(){
 }
 function escapeHtml(s){return clean(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}
 function toggleVideo(btn,vid){const box=btn.nextElementSibling;const open=box.classList.toggle('open');btn.querySelector('span:last-child').textContent=open?'▲':'▼';box.innerHTML=open?`<iframe src="https://www.youtube.com/embed/${vid}" allowfullscreen loading="lazy"></iframe>`:''}
-function toggleDone(k){completed[k]=!completed[k];localStorage.setItem('rt_v12_completed',JSON.stringify(completed));renderPanels()}
-function edit(k,f,v){edits[k]=edits[k]||{};edits[k][f]=v;localStorage.setItem('rt_v12_edits',JSON.stringify(edits))}
-function clearLocalData(){if(!confirm('¿Limpiar pesos/observaciones/progreso guardados solo en este dispositivo?'))return; localStorage.removeItem('rt_v12_completed'); localStorage.removeItem('rt_v12_edits'); completed={}; edits={}; renderPanels(); toast('Datos locales limpiados');}
+function toggleDone(k){if(!currentProfile)return;completed[k]=!completed[k];persistProfile();renderPanels();}
+function edit(k,f,v){if(!currentProfile || !['weight','obs'].includes(f))return;edits[k]=edits[k]||{};edits[k][f]=v;persistProfile();}
+function clearLocalData(){
+  if(!currentProfile || !confirm('¿Limpiar solo los pesos, notas y progreso locales de '+routineName()+'? Las otras rutinas se conservan.'))return;
+  completed={}; edits={}; if(persistProfile()){renderPanels();toast('Registros locales de '+routineName()+' limpiados');}
+}
 function updateProgress(){const s=book[activeSheet],d=s?.days[activeDay];let total=0,done=0,ei=0;if(d)d.sections.forEach(sec=>sec.exercises.forEach(()=>{total++; if(completed[key(activeSheet,activeDay,ei)])done++; ei++}));document.getElementById('pText').textContent=`${done} / ${total}`;document.getElementById('pFill').style.width=total?`${done/total*100}%`:'0%'; updateQuickbar && updateQuickbar()}
-function resetDay(){const s=book[activeSheet],d=s?.days[activeDay];if(!d)return;let ei=0;d.sections.forEach(sec=>sec.exercises.forEach(()=>{delete completed[key(activeSheet,activeDay,ei)];ei++}));localStorage.setItem('rt_v12_completed',JSON.stringify(completed));renderPanels()}
-async function saveRemote(){const url=localStorage.getItem('rt_webhook')||prompt('Pegá la URL del Google Apps Script Web App para escribir en el Sheet. Cancelar = guardar solo en el celular.');if(!url){toast('Guardado local en el celular');return}localStorage.setItem('rt_webhook',url);let changes=[];book.forEach((s,si)=>s.days.forEach((d,di)=>{let ei=0;d.sections.forEach(sec=>sec.exercises.forEach(ex=>{const k=key(si,di,ei),ed=edits[k];if(ed){if(ed.weight!==undefined&&ex.cols.weight)changes.push({sheet:s.name,row:ex.row,col:ex.cols.weight,value:ed.weight});if(ed.obs!==undefined&&ex.cols.obs)changes.push({sheet:s.name,row:ex.row,col:ex.cols.obs,value:ed.obs});}ei++}))}));try{await fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({changes})});toast('Cambios enviados al Sheet');}catch(e){toast('No pude enviar al Sheet',true)}}
-(function init(){const saved=localStorage.getItem('rt_sheetUrl');if(saved)document.getElementById('sheetUrl').value=saved;loadWorkout()})();
+function resetDay(){const s=book[activeSheet],d=s?.days[activeDay];if(!d)return;let ei=0;d.sections.forEach(sec=>sec.exercises.forEach(()=>{delete completed[key(activeSheet,activeDay,ei)];ei++;}));persistProfile();renderPanels();}
+async function saveRemote(){
+  if(!currentProfile || isLoading || remoteBusy)return;
+  const id=currentRoutineId, profile=currentProfile, name=routineName();
+  const changes=[];
+  try{
+    if(sid(document.getElementById('sheetUrl').value)!==id)throw new Error('Primero cargá la planilla que pegaste. El destino de guardado no se cambió.');
+    book.forEach((s,si)=>s.days.forEach((d,di)=>{
+      let ei=0;
+      d.sections.forEach(sec=>sec.exercises.forEach(ex=>{
+        const ed=edits[key(si,di,ei++)];
+        if(!ed)return;
+        if(ed.weight!==undefined && ex.cols.weight)changes.push({sheet:s.name,row:ex.row,col:ex.cols.weight,value:ed.weight});
+        if(ed.obs!==undefined && ex.cols.obs)changes.push({sheet:s.name,row:ex.row,col:ex.cols.obs,value:ed.obs});
+      }));
+    }));
+    if(!changes.length){toast('No hay pesos ni notas pendientes para enviar');return;}
+    if(!persistProfile())return;
+    let url=profile.webhook;
+    if(!url)url=prompt('Conexión de '+name+': pegá la URL de Apps Script de ESTA planilla. Cancelar conserva los registros en este dispositivo.');
+    if(!url){toast('Pesos y notas guardados en este dispositivo');return;}
+    url=url.trim();
+    const endpoint=new URL(url);
+    if(endpoint.protocol!=='https:' || endpoint.hostname!=='script.google.com' || !/^\/macros\/s\/[A-Za-z0-9_-]+\/exec\/?$/.test(endpoint.pathname)){
+      throw new Error('La conexión debe ser una URL de Google Apps Script terminada en /exec.');
+    }
+    remoteBusy=true;updateSaveButton();
+    // Solo el destino anterior conserva su funcionamiento previo. Los nuevos se verifican.
+    if(profile.webhookMode!=='legacy'){
+      endpoint.searchParams.set('action','routineInfo');
+      const check=await fetch(endpoint.href,{cache:'no-store'});
+      if(!check.ok)throw new Error('No pude verificar la conexión de esta planilla.');
+      const info=await check.json();
+      if(info.protocol!=='mi-rutina-v1' || info.spreadsheetId!==id){
+        throw new Error('Esa conexión no corresponde a esta rutina. No se enviaron datos.');
+      }
+    }
+    if(currentRoutineId!==id || isLoading || sid(document.getElementById('sheetUrl').value)!==id){
+      throw new Error('La rutina cambió durante la verificación. No se enviaron datos.');
+    }
+    profile.webhook=url;profile.webhookMode=profile.webhookMode==='legacy'?'legacy':'verified';
+    profiles.write(id,profile);
+    const response=await fetch(url,{
+      method:'POST',mode:profile.webhookMode==='legacy'?'no-cors':'cors',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({spreadsheetId:id,changes})
+    });
+    if(currentRoutineId!==id)return;
+    if(profile.webhookMode==='legacy'){
+      toast('Envío realizado para '+name+'. Confirmá el guardado en la planilla.');
+    }else{
+      const result=await response.json();
+      if(!response.ok || result.ok!==true || result.spreadsheetId!==id || result.updated!==changes.length){
+        throw new Error('No pude confirmar el guardado en Google Sheets. Los registros locales se conservan.');
+      }
+      toast('Pesos y notas de '+name+' guardados en Google Sheets');
+    }
+  }catch(e){
+    if(currentRoutineId===id)toast(e.message||'No pude confirmar el envío. Tus registros locales se conservan.',true);
+  }finally{remoteBusy=false;updateSaveButton();}
+}
+(function init(){
+  try{
+    profiles=RoutineProfiles.create(localStorage,DEFAULT_SHEET_ID);
+    profiles.migrateLegacy();
+    const params=new URLSearchParams(location.search);
+    const requested=params.get('rutina');
+    if(params.has('rutina')){
+      document.getElementById('sheetUrl').value=requested||'';
+      incomingRoutineId=sid(requested);
+      incomingName=(params.get('nombre')||'').replace(/[\u0000-\u001f\u007f]/g,'').trim().slice(0,60);
+      document.getElementById('sheetUrl').value=RoutineProfiles.canonicalUrl(incomingRoutineId);
+    }else{
+      document.getElementById('sheetUrl').value=localStorage.getItem('rt_sheetUrl')||DEFAULT_URL;
+    }
+    loadWorkout();
+  }catch(e){toggleConfig(true);toast(e.message,true);updateSaveButton();}
+})();
 </script>
 </body>
 </html>
+
